@@ -155,8 +155,8 @@ func ValidateProductInput(product *ProductsModel, c *gin.Context, db *sql.DB) er
 // Tambahkan nilai ke total_price cart
 func AddToCartTotalPrice(db *sql.DB, cartID int, amount int) error {
 	_, err := db.Exec(`
-		UPDATE carts uploadResp.URL undefined (type *"github.com/imagekit-developer/imagekit-go/api/uploader".UploadResponse has no field or method 
-		SET total_price = total_price + ?, updated_at = NOW() 
+		UPDATE carts uploadResp.URL undefined (type *"github.com/imagekit-developer/imagekit-go/api/uploader".UploadResponse has no field or method
+		SET total_price = total_price + ?, updated_at = NOW()
 		WHERE id = ?
 	`, amount, cartID)
 	return err
@@ -165,8 +165,8 @@ func AddToCartTotalPrice(db *sql.DB, cartID int, amount int) error {
 // Kurangi nilai dari total_price cart
 func SubtractFromCartTotalPrice(db *sql.DB, cartID int, amount int) error {
 	_, err := db.Exec(`
-		UPDATE carts 
-		SET total_price = GREATEST(0, total_price - ?), updated_at = NOW() 
+		UPDATE carts
+		SET total_price = GREATEST(0, total_price - ?), updated_at = NOW()
 		WHERE id = ?
 	`, amount, cartID)
 	return err
@@ -435,10 +435,10 @@ func GetAllProducts(c *gin.Context, db *sql.DB) {
     // Cek apakah request berdasarkan ID produk
     productID := c.Param("id_product")
     categoryID := c.Param("category_id")
-    
+
     var products []ProductsBasicModel
     var err error
-    
+
     if productID != "" {
         // Validasi productID adalah angka
         id, err := strconv.Atoi(productID)
@@ -446,14 +446,14 @@ func GetAllProducts(c *gin.Context, db *sql.DB) {
             c.JSON(http.StatusBadRequest, gin.H{"error": "ID produk harus berupa angka"})
             return
         }
-        
+
         // Ambil produk berdasarkan ID
         products, err = getProductByID(db, id)
         if err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
             return
         }
-        
+
         if len(products) == 0 {
             c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan"})
             return
@@ -517,13 +517,13 @@ func GetAllProducts(c *gin.Context, db *sql.DB) {
 // Fungsi baru untuk mengambil produk berdasarkan ID
 func getProductByID(db *sql.DB, productID int) ([]ProductsBasicModel, error) {
     query := `
-        SELECT 
-            id, category_id, name, description, 
-            is_varians, is_discounted, discount_price, 
+        SELECT
+            id, category_id, name, description,
+            is_varians, is_discounted, discount_price,
             price, stock
         FROM products
         WHERE id = ?`
-    
+
     rows, err := db.Query(query, productID)
     if err != nil {
         return nil, fmt.Errorf("gagal query produk: %w", err)
@@ -561,12 +561,12 @@ func getBasicProducts(db *sql.DB, categoryID string) ([]ProductsBasicModel, erro
 
     // Bangun query berdasarkan ada/tidaknya categoryID
     query = `
-        SELECT 
-            id, category_id, name, description, 
-            is_varians, is_discounted, discount_price, 
+        SELECT
+            id, category_id, name, description,
+            is_varians, is_discounted, discount_price,
             price, stock
         FROM products`
-    
+
     if categoryID != "" {
         // Validasi categoryID adalah angka
         if _, err := strconv.Atoi(categoryID); err != nil {
@@ -628,8 +628,8 @@ func getProductImages(db *sql.DB, productID int) ([]string, []string, error) {
 // Fungsi pembantu untuk mengambil varian produk
 func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
 	rows, err := db.Query(`
-        SELECT id, name, price, is_discounted, discount_price, stock 
-        FROM product_variants 
+        SELECT id, name, price, is_discounted, discount_price, stock
+        FROM product_variants
         WHERE product_id = ?`, productID)
 	if err != nil {
 		return nil, err
@@ -685,7 +685,7 @@ func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
 // // +++++++++++++++++++++++++
 // func GetAllProductVariants(c *gin.Context, db *sql.DB) {
 // 	rows, err := db.Query(`
-// 		SELECT 
+// 		SELECT
 // 			id, product_id, name, price, is_discounted, discount_price, stock
 // 		FROM product_variants
 // 	`)
@@ -814,8 +814,8 @@ func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
 
 // 	// SQL untuk insert
 // 	query := `
-// 		INSERT INTO product_variants 
-// 		(product_id, name, color, price, is_discounted, discount_price, stock, is_service, search_vector, created_at, updated_at) 
+// 		INSERT INTO product_variants
+// 		(product_id, name, color, price, is_discounted, discount_price, stock, is_service, search_vector, created_at, updated_at)
 // 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 // 	res, err := db.Exec(
@@ -1525,7 +1525,7 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 
 	// Insert cart item
 	_, err = db.Exec(`
-		INSERT INTO cart_items 
+		INSERT INTO cart_items
 		(cart_id, product_id, product_variant_id, quantity, price_per_item, total_price, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
 	`, userID, input.ProductID, input.ProductVariantID, input.Quantity, pricePerItem, totalPrice)
@@ -1659,9 +1659,9 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 // Reused helper functions
 func getCartItems(db *sql.DB, cartID int) ([]CartItemModel, error) {
     rows, err := db.Query(`
-        SELECT id, cart_id, product_id, product_variant_id, 
+        SELECT id, cart_id, product_id, product_variant_id,
                quantity, price_per_item, total_price
-        FROM cart_items 
+        FROM cart_items
         WHERE cart_id = ?`, cartID)
     if err != nil {
         return nil, err
@@ -1752,8 +1752,8 @@ func getCurrentStock(product ProductsBasicModel, variant *Variant) int {
 
 func updateCartItem(db *sql.DB, itemID int, newPrice int, newTotal int) error {
     _, err := db.Exec(`
-        UPDATE cart_items 
-        SET price_per_item = ?, total_price = ?, updated_at = NOW() 
+        UPDATE cart_items
+        SET price_per_item = ?, total_price = ?, updated_at = NOW()
         WHERE id = ?`,
         newPrice, newTotal, itemID)
     return err
@@ -1762,15 +1762,15 @@ func updateCartItem(db *sql.DB, itemID int, newPrice int, newTotal int) error {
 func updateCartTotal(db *sql.DB, cartID int, diff int) error {
     if diff > 0 {
         _, err := db.Exec(`
-            UPDATE carts 
-            SET total_price = total_price + ?, updated_at = NOW() 
+            UPDATE carts
+            SET total_price = total_price + ?, updated_at = NOW()
             WHERE id = ?`,
             diff, cartID)
         return err
     } else if diff < 0 {
         _, err := db.Exec(`
-            UPDATE carts 
-            SET total_price = total_price - ?, updated_at = NOW() 
+            UPDATE carts
+            SET total_price = total_price - ?, updated_at = NOW()
             WHERE id = ?`,
             -diff, cartID)
         return err
@@ -1998,7 +1998,7 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 
     err = tx.QueryRow(`
         SELECT cart_id, product_id, product_variant_id, quantity, price_per_item, total_price
-        FROM cart_items 
+        FROM cart_items
         WHERE id = ? AND cart_id = ?`, cartItemID, userID).Scan(
             &currentCartItem.CartID,
             &currentCartItem.ProductID,
@@ -2016,7 +2016,7 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
     // 2. Verifikasi variant baru termasuk dalam product yang sama
     var variantProductID int
     err = tx.QueryRow(`
-        SELECT product_id FROM product_variants 
+        SELECT product_id FROM product_variants
         WHERE id = ?`, input.VariantID).Scan(&variantProductID)
 
     if err != nil || variantProductID != currentCartItem.ProductID {
@@ -2034,7 +2034,7 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 
     err = tx.QueryRow(`
         SELECT price, discount_price, stock, name
-        FROM product_variants 
+        FROM product_variants
         WHERE id = ?`, input.VariantID).Scan(
             &newVariant.Price,
             &newVariant.DiscountPrice,
@@ -2069,8 +2069,8 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
     // 7. Update cart item
     _, err = tx.Exec(`
         UPDATE cart_items
-        SET product_variant_id = ?, 
-            price_per_item = ?, 
+        SET product_variant_id = ?,
+            price_per_item = ?,
             total_price = ?,
             updated_at = NOW()
         WHERE id = ?`,
@@ -2195,22 +2195,6 @@ func CreateStockReservation(db *sql.DB, orderID, userID int, items []OrderItemMo
 
 	now := time.Now()
 	var expiredAt time.Time
-	var hearts int
-	err = tx.QueryRow("SELECT hearts FROM users WHERE id = ?", userID).Scan(&hearts)
-	if err != nil {
-		return err
-	}
-
-	switch hearts {
-	case 3:
-		expiredAt = now.Add(24 * time.Hour)
-	case 2:
-		expiredAt = now.Add(12 * time.Hour)
-	case 1:
-		expiredAt = now.Add(6 * time.Hour)
-	default:
-		return errors.New("invalid heart count")
-	}
 
 	res, err := tx.Exec(`INSERT INTO temp_stock_reservations (user_id, order_id, reserved_at, expired_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?)`, userID, orderID, now, expiredAt, now, now)
@@ -2518,23 +2502,6 @@ func CreateOrder(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Hitung durasi timer berdasarkan hati user
-	var heartCount int
-	if err := db.QueryRow(`SELECT heart FROM users WHERE id = ?`, userID).Scan(&heartCount); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil jumlah hati"})
-		return
-	}
-	var duration time.Duration
-	switch heartCount {
-	case 3:
-		duration = 24 * time.Hour
-	case 2:
-		duration = 12 * time.Hour
-	case 1:
-		duration = 6 * time.Hour
-	default:
-		duration = 6 * time.Hour
-	}
 	now := time.Now()
 	expiration := now.Add(duration)
 
@@ -2861,8 +2828,8 @@ func DeleteStockReservationAndReturn(orderID int, db *sql.DB) {
 func CheckAndExpireOrders(c *gin.Context, db *sql.DB) {
 	// Query untuk mengambil semua order dengan status 'waitToBuy' dan timer_expiration yang lewat
 	rows, err := db.Query(`
-		SELECT o.id, o.user_id, o.timer_expiration 
-		FROM orders o 
+		SELECT o.id, o.user_id, o.timer_expiration
+		FROM orders o
 		WHERE o.status = 'waitToBuy' AND o.timer_expiration < NOW()
 	`)
 	if err != nil {
@@ -2905,17 +2872,6 @@ func CheckAndExpireOrders(c *gin.Context, db *sql.DB) {
 		`, order.OrderID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
-			return
-		}
-
-		// Kurangi jumlah hati dari user yang terkait
-		_, err = db.Exec(`
-			UPDATE users
-			SET hearts = hearts - 1
-			WHERE id = ?
-		`, order.UserID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decrease hearts"})
 			return
 		}
 
@@ -3025,7 +2981,7 @@ type ExpiredReservationInfo struct {
 func CleanExpiredReservations(c *gin.Context, db *sql.DB) {
 	// Ambil semua detail reservasi yang sudah expired
 	rows, err := db.Query(`
-		SELECT 
+		SELECT
 			d.temp_reservation_id, r.order_id, d.product_id, d.product_variant_id, d.quantity
 		FROM temp_stock_details d
 		JOIN temp_stock_reservations r ON d.temp_reservation_id = r.id
@@ -3100,7 +3056,7 @@ func CleanExpiredReservations(c *gin.Context, db *sql.DB) {
 
 	// Update status order menjadi expired berdasarkan reservasi expired saja
 	_, err = tx.Exec(
-		fmt.Sprintf(`UPDATE orders SET status = 'expired' 
+		fmt.Sprintf(`UPDATE orders SET status = 'expired'
 		WHERE id IN (SELECT order_id FROM temp_stock_reservations WHERE expired_at <= NOW() AND id IN (%s))`, placeholder),
 		ids...,
 	)
@@ -3254,7 +3210,7 @@ func CreateRestockRequest(c *gin.Context, db *sql.DB) {
 	}
 
 	// Insert permintaan restock ke database
-	res, err := db.Exec(`INSERT INTO restock_requests (user_id, product_id, product_variant_id, message, status, created_at) 
+	res, err := db.Exec(`INSERT INTO restock_requests (user_id, product_id, product_variant_id, message, status, created_at)
 		VALUES (?, ?, ?, ?, 'pending', NOW())`,
 		input.UserID, input.ProductID, input.ProductVariantID, input.Message)
 	if err != nil {
