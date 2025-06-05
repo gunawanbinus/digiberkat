@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `digiberkarv2`
+-- Database: `digiberkat`
 --
 
 -- --------------------------------------------------------
@@ -283,35 +283,6 @@ CREATE TABLE `restock_requests` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `temp_stock_details`
---
-
-CREATE TABLE `temp_stock_details` (
-  `id` int(11) NOT NULL,
-  `temp_reservation_id` int(11) NOT NULL,
-  `product_id` int(11) NOT NULL,
-  `product_variant_id` int(11) DEFAULT NULL,
-  `quantity` int(11) NOT NULL,
-  `updated_at` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `temp_stock_reservations`
---
-
-CREATE TABLE `temp_stock_reservations` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `order_id` int(11) NOT NULL,
-  `expired_at` datetime NOT NULL,
-  `created_at` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `users`
 --
 
@@ -426,23 +397,6 @@ ALTER TABLE `restock_requests`
   ADD KEY `fk_restock_variant` (`product_variant_id`);
 
 --
--- Indexes for table `temp_stock_details`
---
-ALTER TABLE `temp_stock_details`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_temp_stock_details_reservation` (`temp_reservation_id`),
-  ADD KEY `fk_temp_stock_details_product` (`product_id`),
-  ADD KEY `fk_temp_stock_details_variant` (`product_variant_id`);
-
---
--- Indexes for table `temp_stock_reservations`
---
-ALTER TABLE `temp_stock_reservations`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `fk_temp_reservations_user` (`user_id`),
-  ADD KEY `fk_temp_reservations_order` (`order_id`);
-
---
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -517,18 +471,6 @@ ALTER TABLE `product_variants`
 -- AUTO_INCREMENT for table `restock_requests`
 --
 ALTER TABLE `restock_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `temp_stock_details`
---
-ALTER TABLE `temp_stock_details`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `temp_stock_reservations`
---
-ALTER TABLE `temp_stock_reservations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -607,22 +549,6 @@ ALTER TABLE `restock_requests`
   ADD CONSTRAINT `fk_restock_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_restock_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_restock_variant` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `temp_stock_details`
---
-ALTER TABLE `temp_stock_details`
-  ADD CONSTRAINT `fk_temp_stock_details_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_temp_stock_details_reservation` FOREIGN KEY (`temp_reservation_id`) REFERENCES `temp_stock_reservations` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_temp_stock_details_variant` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `temp_stock_reservations`
---
-ALTER TABLE `temp_stock_reservations`
-  ADD CONSTRAINT `fk_temp_reservations_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_temp_reservations_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

@@ -4,7 +4,7 @@ package main
 import (
 	//"context"
 	"database/sql"
-	"errors"
+	// "errors"
 	"fmt"
 	"log"
 
@@ -2178,116 +2178,6 @@ func DeleteCartItem(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, gin.H{"message": "🗑️ Item berhasil dihapus dari cart"})
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-func CreateStockReservation(db *sql.DB, orderID, userID int, items []OrderItemModel) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
-	now := time.Now()
-	var expiredAt time.Time
-
-	res, err := tx.Exec(`INSERT INTO temp_stock_reservations (user_id, order_id, reserved_at, expired_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)`, userID, orderID, now, expiredAt, now, now)
-	if err != nil {
-		return err
-	}
-
-	reservationID, err := res.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	for _, item := range items {
-		// Kurangi stok produk/varian
-		if item.ProductVariantID != nil {
-			_, err = tx.Exec(`UPDATE product_variants SET stock = stock - ? WHERE id = ? AND stock >= ?`, item.Quantity, *item.ProductVariantID, item.Quantity)
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err = tx.Exec(`UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?`, item.Quantity, item.ProductID, item.Quantity)
-			if err != nil {
-				return err
-			}
-		}
-
-		_, err = tx.Exec(`INSERT INTO temp_stock_details (temp_reservation_id, product_id, product_variant_id, quantity, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?)`, reservationID, item.ProductID, item.ProductVariantID, item.Quantity, now, now)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Hapus reservasi dan kembalikan stok
-func DeleteStockReservation(db *sql.DB, orderID int) error {
-	rows, err := db.Query(`SELECT d.product_id, d.product_variant_id, d.quantity
-		FROM temp_stock_reservations r
-		JOIN temp_stock_details d ON r.id = d.temp_reservation_id
-		WHERE r.order_id = ?`, orderID)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var items []OrderItemModel
-	for rows.Next() {
-		var item OrderItemModel
-		err := rows.Scan(&item.ProductID, &item.ProductVariantID, &item.Quantity)
-		if err != nil {
-			return err
-		}
-		items = append(items, item)
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
-
-	// Kembalikan stok
-	for _, item := range items {
-		if item.ProductVariantID != nil {
-			_, err = tx.Exec(`UPDATE product_variants SET stock = stock + ? WHERE id = ?`, item.Quantity, *item.ProductVariantID)
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err = tx.Exec(`UPDATE products SET stock = stock + ? WHERE id = ?`, item.Quantity, item.ProductID)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// Hapus detail dan reservasi
-	_, err = tx.Exec(`DELETE FROM temp_stock_details WHERE temp_reservation_id IN (SELECT id FROM temp_stock_reservations WHERE order_id = ?)`, orderID)
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(`DELETE FROM temp_stock_reservations WHERE order_id = ?`, orderID)
-	return err
-}
-
 // Untuk rollback stok ke inventory
 func ReturnStockToInventory(db *sql.DB, items []OrderItemModel) error {
 	tx, err := db.Begin()
@@ -2326,8 +2216,6 @@ func OrderRoutes(r *gin.Engine, db *sql.DB) {
 	addRoute(orderGroup, "GET", "/my", []string{"user"}, GetMyOrders, db)         // Lihat semua order milik user saat ini
 	addRoute(orderGroup, "PUT", "/:id/cancel", []string{"user"}, CancelOrder, db) // Cancel order milik sendiri
 
-	// 🛠️ CRONJOB / Scheduled Task: Cek dan tandai order yang expired (tidak perlu auth)
-	addRoute(r.Group(""), "GET", "/api/v1/orders/check-expired", nil, CheckAndExpireOrders, db)
 }
 
 // ++++++++++++++++++++++++
@@ -2503,7 +2391,7 @@ func CreateOrder(c *gin.Context, db *sql.DB) {
 	}
 
 	now := time.Now()
-	expiration := now.Add(duration)
+	expiration := now.Add(36000)
 
 	// Transaksi pembuatan order
 	tx, err := db.Begin()
