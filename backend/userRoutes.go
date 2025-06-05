@@ -3098,7 +3098,7 @@ func CreateRestockRequest(c *gin.Context, db *sql.DB) {
 
 	// Insert permintaan restock ke database
 	res, err := db.Exec(`INSERT INTO restock_requests (user_id, product_id, product_variant_id, message, status, created_at)
-		VALUES (?, ?, ?, ?, 'pending', NOW())`,
+		VALUES (?, ?, ?, ?, 'unread', NOW())`,
 		input.UserID, input.ProductID, input.ProductVariantID, input.Message)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengirim permintaan restock"})
@@ -3116,7 +3116,7 @@ func CreateRestockRequest(c *gin.Context, db *sql.DB) {
 			"product_id":         input.ProductID,
 			"product_variant_id": input.ProductVariantID,
 			"message":            input.Message,
-			"status":             "pending",
+			"status":             "unread",
 			"created_at":         input.CreatedAt,
 		},
 	})
@@ -3144,9 +3144,9 @@ func UpdateRestockRequestStatus(c *gin.Context, db *sql.DB) {
 	}
 
 	// Cek apakah status valid
-	validStatuses := map[string]bool{"pending": true, "seen": true, "responded": true}
+	validStatuses := map[string]bool{"unread": true, "read": true, "done": true}
 	if !validStatuses[input.Status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Status tidak valid permitted (pending, seen, responded)"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Status tidak valid permitted (unread, read, done)"})
 		return
 	}
 
