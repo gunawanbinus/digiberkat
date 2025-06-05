@@ -8,23 +8,23 @@ import (
 )
 
 func CORSMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-        c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        
-        if c.Request.Method == "OPTIONS" {
-            c.AbortWithStatus(204)
-            return
-        }
-        
-        c.Next()
-    }
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }
 
 func main() {
 	// Koneksi ke database
-	
+
 	db, err := InitDB()
 	if err != nil {
 		log.Fatalf("❌ Gagal terhubung ke database: %v", err)
@@ -44,11 +44,11 @@ func main() {
 	// CartRoutes(r, db)
 	// StockReservationRoutes(r, db)
 	CartItemRoutes(r, db)
-	// OrderRoutes(r, db)
+	OrderRoutes(r, db)
 
 	// // Menjalankan server
-	if err := r.Run(":8081"); err != nil {
+	if err := r.Run(":8001"); err != nil {
 		log.Fatalf("❌ Gagal menjalankan server: %v", err)
 	}
-	log.Println("✅ Server running at http://localhost:8081")
+	log.Println("✅ Server running at http://localhost:8001")
 }
