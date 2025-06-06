@@ -123,23 +123,6 @@ type OrderItemModel struct {
 	TotalPrice       int  `json:"total_price"`
 }
 
-type TempStockReservationModel struct {
-	ID        int       `json:"id"`
-	UserID    int       `json:"user_id"`
-	OrderID   int       `json:"order_id"`
-	ExpiredAt time.Time `json:"expired_at"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type TempStockDetailModel struct {
-	ID                int       `json:"id"`
-	TempReservationID int       `json:"temp_reservation_id"`
-	ProductID         int       `json:"product_id"`
-	ProductVariantID  *int      `json:"product_variant_id"` // Bisa null jika tidak ada varian
-	Quantity          int       `json:"quantity"`
-	UpdatedAt         time.Time `json:"updated_at"`
-}
-
 type RestockRequestModel struct {
 	ID               int       `json:"id"`
 	UserID           int       `json:"user_id"`            // Tak Bisa NULL

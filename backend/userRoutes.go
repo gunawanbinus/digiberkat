@@ -2215,8 +2215,11 @@ func OrderRoutes(r *gin.Engine, db *sql.DB) {
 	// 👤 USER: Customer routes (create order, lihat order sendiri, cancel order)
 	addRoute(orderGroup, "POST", "", []string{"user"}, CreateOrder, db)           // Buat order dari cart
 	addRoute(orderGroup, "GET", "/my", []string{"user"}, GetMyOrders, db)         // Lihat semua order milik user saat ini
+	addRoute(orderGroup, "GET", "/all", []string{"employee", "admin"}, GetAllOrders, db) // Lihat semua order
+	addRoute(orderGroup, "GET", "/all/:status", []string{"employee", "admin"}, GetOrdersByStatus, db) // Lihat order by status
+	addRoute(orderGroup, "GET", "/:id", []string{"user", "employee", "admin"}, GetOrderByID, db) // Lihat order by ID
 	addRoute(orderGroup, "PUT", "/:id/cancel", []string{"user"}, CancelOrder, db) // Cancel order milik sendiri
-	addRoute(orderGroup, "PUT", "/:id/finish", []string{"employee","admin"}, FinishOrder, db) // Selesaikan order (untuk employee dan admin)
+	addRoute(orderGroup, "PUT", "/:id/finish", []string{"employee", "admin"}, FinishOrder, db) // Selesaikan order (untuk employee dan admin)
 
 }
 
@@ -2248,6 +2251,8 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 	}
 
 	var allOrders []OrderWithItems
+	var product ProductsModel
+	var image ProductImageModel
 
 	for orderRows.Next() {
 		var order OrderModel
@@ -2262,9 +2267,12 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 
 		// Ambil order items
 		itemRows, err := db.Query(`
-			SELECT id, order_id, product_id, product_variant_id, quantity, price_at_purchase, total_price
+			SELECT order_items.id, order_items.order_id, order_items.product_id, order_items.product_variant_id, order_items.quantity, order_items.price_at_purchase, order_items.total_price, products.name, product_images.thumbnail_url
 			FROM order_items
+			JOIN products ON order_items.product_id = products.id
+			JOIN product_images ON products.id = product_images.product_id
 			WHERE order_id = ?
+			LIMIT 1
 		`, order.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil item order"})
@@ -2274,9 +2282,11 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 		var items []OrderItemModel
 		for itemRows.Next() {
 			var item OrderItemModel
+
+
 			err := itemRows.Scan(
 				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
-				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice,
+				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.Name, &image.ThumbnailURL,
 			)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca item order"})
@@ -2300,6 +2310,278 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"orders": allOrders,
+	        "product_name": product.Name,
+	        "product_thumb": image.ThumbnailURL,
+	})
+}
+
+func GetAllOrders(c *gin.Context, db *sql.DB) {
+	// Ambil semua order user
+	orderRows, err := db.Query(`
+		SELECT id, user_id, cart_user_id, status, total_price, expired_at, created_at, updated_at
+		FROM orders
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data order"})
+		return
+	}
+	defer orderRows.Close()
+
+	// Struct gabungan order dan items
+	type OrderWithItems struct {
+		Order OrderModel       `json:"order"`
+		Items []OrderItemModel `json:"items"`
+	}
+
+	var allOrders []OrderWithItems
+	var product ProductsModel
+	var image ProductImageModel
+
+	for orderRows.Next() {
+		var order OrderModel
+		err := orderRows.Scan(
+			&order.ID, &order.UserID, &order.CartUserID, &order.Status,
+			&order.TotalPrice, &order.ExpiredAt, &order.CreatedAt, &order.UpdatedAt,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca data order"})
+			return
+		}
+
+		// Ambil order items
+		itemRows, err := db.Query(`
+			SELECT order_items.id, order_items.order_id, order_items.product_id, order_items.product_variant_id, order_items.quantity, order_items.price_at_purchase, order_items.total_price, products.name, product_images.thumbnail_url
+			FROM order_items
+			JOIN products ON order_items.product_id = products.id
+			JOIN product_images ON products.id = product_images.product_id
+			WHERE order_id = ?
+			LIMIT 1
+		`, order.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil item order"})
+			return
+		}
+
+		var items []OrderItemModel
+		for itemRows.Next() {
+			var item OrderItemModel
+
+
+			err := itemRows.Scan(
+				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
+				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.Name, &image.ThumbnailURL,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca item order"})
+				itemRows.Close()
+				return
+			}
+			items = append(items, item)
+		}
+		itemRows.Close()
+
+		allOrders = append(allOrders, OrderWithItems{
+			Order: order,
+			Items: items,
+		})
+	}
+
+	if len(allOrders) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "Belum ada order"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orders": allOrders,
+	        "product_name": product.Name,
+	        "product_thumb": image.ThumbnailURL,
+	})
+}
+
+func GetOrderByID(c *gin.Context, db *sql.DB) {
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
+	// Ambil semua order user
+	orderRows, err := db.Query(`
+		SELECT id, user_id, cart_user_id, status, total_price, expired_at, created_at, updated_at
+		FROM orders
+		WHERE id = ?
+	`, orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data order"})
+		return
+	}
+	defer orderRows.Close()
+
+	// Struct gabungan order dan items
+	type OrderWithItems struct {
+		Order OrderModel           `json:"order"`
+		Items []OrderItemModel     `json:"items"`
+		Products []ProductsModel   `json:"products"`
+		Images []ProductImageModel `json:"images"`
+	}
+
+	var allOrders []OrderWithItems
+
+	for orderRows.Next() {
+		var order OrderModel
+		err := orderRows.Scan(
+			&order.ID, &order.UserID, &order.CartUserID, &order.Status,
+			&order.TotalPrice, &order.ExpiredAt, &order.CreatedAt, &order.UpdatedAt,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca data order"})
+			return
+		}
+
+		// Ambil order items
+		itemRows, err := db.Query(`
+			SELECT order_items.id, order_items.order_id, order_items.product_id, order_items.product_variant_id, order_items.quantity, order_items.price_at_purchase, order_items.total_price, products.id, products.name, product_images.id, product_images.product_id, product_images.thumbnail_url
+			FROM order_items
+			JOIN products ON order_items.product_id = products.id
+			JOIN product_images ON products.id = product_images.product_id
+			WHERE order_id = ?
+		`, order.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil item order"})
+			return
+		}
+
+		var items []OrderItemModel
+		var products []ProductsModel
+	        var images []ProductImageModel
+
+		for itemRows.Next() {
+			var item OrderItemModel
+			var product ProductsModel
+	                var image ProductImageModel
+			err := itemRows.Scan(
+				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
+				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.ID, &product.Name, &image.ID, &image.ProductID, &image.ThumbnailURL,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca item order"})
+				itemRows.Close()
+				return
+			}
+			items = append(items, item)
+			products = append(products, product)
+			images = append(images, image)
+		}
+		itemRows.Close()
+
+		allOrders = append(allOrders, OrderWithItems{
+			Order: order,
+			Items: items,
+		        Products: products,
+		        Images: images,
+		})
+	}
+
+	if len(allOrders) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "Order ID tidak memiliki produk"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orders": allOrders,
+	})
+}
+
+func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
+	orderStatus := c.Param("status")
+	if orderStatus != "pending" && orderStatus != "done" && orderStatus != "cancelled" && orderStatus != "expired" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Status tidak valid"})
+		return
+	}
+	// Ambil semua order by status
+	orderRows, err := db.Query(`
+		SELECT id, user_id, cart_user_id, status, total_price, expired_at, created_at, updated_at
+		FROM orders
+		WHERE status = ?
+		ORDER BY created_at DESC
+	`, orderStatus)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data order"})
+		return
+	}
+	defer orderRows.Close()
+
+	// Struct gabungan order dan items
+	type OrderWithItems struct {
+		Order OrderModel       `json:"order"`
+		Items []OrderItemModel `json:"items"`
+	}
+
+	var allOrders []OrderWithItems
+	var product ProductsModel
+	var image ProductImageModel
+
+	for orderRows.Next() {
+		var order OrderModel
+		err := orderRows.Scan(
+			&order.ID, &order.UserID, &order.CartUserID, &order.Status,
+			&order.TotalPrice, &order.ExpiredAt, &order.CreatedAt, &order.UpdatedAt,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca data order"})
+			return
+		}
+
+		// Ambil order items
+		itemRows, err := db.Query(`
+			SELECT order_items.id, order_items.order_id, order_items.product_id, order_items.product_variant_id, order_items.quantity, order_items.price_at_purchase, order_items.total_price, products.name, product_images.thumbnail_url
+			FROM order_items
+			JOIN products ON order_items.product_id = products.id
+			JOIN product_images ON products.id = product_images.product_id
+			WHERE order_id = ?
+			LIMIT 1
+		`, order.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil item order"})
+			return
+		}
+
+		var items []OrderItemModel
+		for itemRows.Next() {
+			var item OrderItemModel
+
+
+			err := itemRows.Scan(
+				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
+				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.Name, &image.ThumbnailURL,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca item order"})
+				itemRows.Close()
+				return
+			}
+			items = append(items, item)
+		}
+		itemRows.Close()
+
+		allOrders = append(allOrders, OrderWithItems{
+			Order: order,
+			Items: items,
+		})
+	}
+
+	if len(allOrders) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "Belum ada order"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orders": allOrders,
+	        "product_name": product.Name,
+	        "product_thumb": image.ThumbnailURL,
 	})
 }
 
