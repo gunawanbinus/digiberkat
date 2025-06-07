@@ -45,6 +45,7 @@ func main() {
 	// StockReservationRoutes(r, db)
 	CartItemRoutes(r, db)
 	OrderRoutes(r, db)
+	PositionRoutes(r, db)	
 
 	// // Menjalankan server
 	if err := r.Run(":8001"); err != nil {

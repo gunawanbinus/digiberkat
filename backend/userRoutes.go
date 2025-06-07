@@ -4,6 +4,8 @@ package main
 import (
 	//"context"
 	"database/sql"
+	"regexp"
+
 	// "errors"
 	"fmt"
 	// "log"
@@ -417,8 +419,203 @@ func DeleteCategory(c *gin.Context, db *sql.DB) {
 	})
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// =========================
+// 🗂️ Position Management
+// =========================
+func PositionRoutes(r *gin.Engine, db *sql.DB) {
+	api := r.Group("/api/v1/position")
 
+	// Public GET
+	addRoute(api, "GET", "", []string{"admin"}, GetAllPosition, db)
+
+	// Admin only: POST, PATCH, DELETE
+	addRoute(api, "POST", "", []string{"admin"}, CreatePosition, db)
+	addRoute(api, "PATCH", "", []string{"admin"}, UpdatePosition, db)
+	addRoute(api, "DELETE", "", []string{"admin"}, DeletePosition, db)
+}
+
+// ++++++++++++++++++++++++
+//
+//	Categories READ
+//
+// +++++++++++++++++++++++++
+func GetAllPosition(c *gin.Context, db *sql.DB) {
+	rows, err := db.Query(`
+		SELECT position_name, description FROM position
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data position employee"})
+		return
+	}
+	defer rows.Close()
+
+	var position []PositionModel
+	for rows.Next() {
+		var pos PositionModel
+		err := rows.Scan(&pos.Name, &pos.Description)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal membaca data kategori"})
+			return
+		}
+		position = append(position, pos)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "✅ Semua kategori berhasil diambil",
+		"data":    position,
+	})
+}
+
+// ++++++++++++++++++++++++
+//
+//	Positions CREATE
+//
+// +++++++++++++++++++++++++
+
+func CreatePosition(c *gin.Context, db *sql.DB) {
+	var input PositionModel
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Format JSON tidak valid"})
+		return
+	}
+
+	if !validatePositionName(input.Name) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Nama posisi tidak valid. Hanya 1 kata huruf tanpa angka/spasi."})
+		return
+	}
+
+	if input.Description == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Deskripsi posisi wajib diisi"})
+		return
+	}
+
+	_, err := db.Exec(`INSERT INTO position (position_name, description) VALUES (?, ?)`, input.Name, input.Description)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menyimpan posisi"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "✅ Posisi berhasil ditambahkan",
+		"name":    input.Name,
+	})
+}
+
+func validatePositionName(name string) bool {
+	// Validasi: hanya huruf a-z/A-Z, tanpa spasi, tanpa angka, tanpa simbol, minimal 1 karakter
+	matched, _ := regexp.MatchString(`^[A-Za-z]+$`, name)
+	return matched
+}
+
+// ++++++++++++++++++++++++
+//  Position UPDATE
+// +++++++++++++++++++++++++
+
+func UpdatePosition(c *gin.Context, db *sql.DB) {
+	var input PositionModel
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Format JSON tidak valid"})
+		return
+	}
+
+	if input.Name == "" || input.Description == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ position_name dan description wajib diisi"})
+		return
+	}
+
+	input.Name = strings.TrimSpace(strings.ToLower(input.Name))
+	input.Description = strings.TrimSpace(input.Description)
+
+	if !regexp.MustCompile(`^[a-zA-Z]+$`).MatchString(input.Name) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Nama posisi hanya boleh 1 kata huruf tanpa angka/spasi"})
+		return
+	}
+
+	// Cek apakah posisi dengan nama itu ada
+	var existingDesc string
+	err := db.QueryRow(`SELECT description FROM position WHERE LOWER(TRIM(position_name)) = ?`, input.Name).Scan(&existingDesc)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "⚠️ Posisi tidak ditemukan"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mencari posisi"})
+		return
+	}
+
+	// Lakukan update
+	result, err := db.Exec(`UPDATE position SET description = ? WHERE LOWER(TRIM(position_name)) = ?`, input.Description, input.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengupdate posisi"})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "⚠️ Tidak ada perubahan data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "✅ Posisi berhasil diperbarui",
+		"position":    input.Name,
+		"description": input.Description,
+	})
+}
+
+// ++++++++++++++++++++++++
+//
+//	Position DELETE
+//
+// +++++++++++++++++++++++++
+func DeletePosition(c *gin.Context, db *sql.DB) {
+	var input struct {
+		Name string `json:"position_name"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Format JSON tidak valid"})
+		return
+	}
+
+	input.Name = strings.TrimSpace(strings.ToLower(input.Name))
+	if input.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ position_name wajib diisi"})
+		return
+	}
+
+	if !regexp.MustCompile(`^[a-zA-Z]+$`).MatchString(input.Name) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Nama posisi hanya boleh 1 kata huruf tanpa angka/spasi"})
+		return
+	}
+
+	// Cek apakah posisi ada
+	var exists string
+	err := db.QueryRow(`SELECT position_name FROM position WHERE LOWER(TRIM(position_name)) = ?`, input.Name).Scan(&exists)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "⚠️ Posisi tidak ditemukan"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mencari posisi"})
+		return
+	}
+
+	// Hapus data
+	_, err = db.Exec(`DELETE FROM position WHERE LOWER(TRIM(position_name)) = ?`, input.Name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menghapus posisi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "✅ Posisi berhasil dihapus",
+		"name":    input.Name,
+	})
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // =========================
 // 📦 Product Management
 // =========================
@@ -2213,13 +2410,13 @@ func OrderRoutes(r *gin.Engine, db *sql.DB) {
 	orderGroup := r.Group("/api/v1/orders")
 
 	// 👤 USER: Customer routes (create order, lihat order sendiri, cancel order)
-	addRoute(orderGroup, "POST", "", []string{"user"}, CreateOrder, db)           // Buat order dari cart
-	addRoute(orderGroup, "GET", "/my", []string{"user"}, GetMyOrders, db)         // Lihat semua order milik user saat ini
-	addRoute(orderGroup, "GET", "/all", []string{"employee", "admin"}, GetAllOrders, db) // Lihat semua order
+	addRoute(orderGroup, "POST", "", []string{"user"}, CreateOrder, db)                               // Buat order dari cart
+	addRoute(orderGroup, "GET", "/my", []string{"user"}, GetMyOrders, db)                             // Lihat semua order milik user saat ini
+	addRoute(orderGroup, "GET", "/all", []string{"employee", "admin"}, GetAllOrders, db)              // Lihat semua order
 	addRoute(orderGroup, "GET", "/all/:status", []string{"employee", "admin"}, GetOrdersByStatus, db) // Lihat order by status
-	addRoute(orderGroup, "GET", "/:id", []string{"user", "employee", "admin"}, GetOrderByID, db) // Lihat order by ID
-	addRoute(orderGroup, "PUT", "/:id/cancel", []string{"user"}, CancelOrder, db) // Cancel order milik sendiri
-	addRoute(orderGroup, "PUT", "/:id/finish", []string{"employee", "admin"}, FinishOrder, db) // Selesaikan order (untuk employee dan admin)
+	addRoute(orderGroup, "GET", "/:id", []string{"user", "employee", "admin"}, GetOrderByID, db)      // Lihat order by ID
+	addRoute(orderGroup, "PUT", "/:id/cancel", []string{"user"}, CancelOrder, db)                     // Cancel order milik sendiri
+	addRoute(orderGroup, "PUT", "/:id/finish", []string{"employee", "admin"}, FinishOrder, db)        // Selesaikan order (untuk employee dan admin)
 
 }
 
@@ -2283,7 +2480,6 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 		for itemRows.Next() {
 			var item OrderItemModel
 
-
 			err := itemRows.Scan(
 				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
 				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.Name, &image.ThumbnailURL,
@@ -2309,9 +2505,9 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"orders": allOrders,
-	        "product_name": product.Name,
-	        "product_thumb": image.ThumbnailURL,
+		"orders":        allOrders,
+		"product_name":  product.Name,
+		"product_thumb": image.ThumbnailURL,
 	})
 }
 
@@ -2367,7 +2563,6 @@ func GetAllOrders(c *gin.Context, db *sql.DB) {
 		for itemRows.Next() {
 			var item OrderItemModel
 
-
 			err := itemRows.Scan(
 				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
 				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.Name, &image.ThumbnailURL,
@@ -2393,9 +2588,9 @@ func GetAllOrders(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"orders": allOrders,
-	        "product_name": product.Name,
-	        "product_thumb": image.ThumbnailURL,
+		"orders":        allOrders,
+		"product_name":  product.Name,
+		"product_thumb": image.ThumbnailURL,
 	})
 }
 
@@ -2421,10 +2616,10 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 
 	// Struct gabungan order dan items
 	type OrderWithItems struct {
-		Order OrderModel           `json:"order"`
-		Items []OrderItemModel     `json:"items"`
-		Products []ProductsModel   `json:"products"`
-		Images []ProductImageModel `json:"images"`
+		Order    OrderModel          `json:"order"`
+		Items    []OrderItemModel    `json:"items"`
+		Products []ProductsModel     `json:"products"`
+		Images   []ProductImageModel `json:"images"`
 	}
 
 	var allOrders []OrderWithItems
@@ -2455,12 +2650,12 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 
 		var items []OrderItemModel
 		var products []ProductsModel
-	        var images []ProductImageModel
+		var images []ProductImageModel
 
 		for itemRows.Next() {
 			var item OrderItemModel
 			var product ProductsModel
-	                var image ProductImageModel
+			var image ProductImageModel
 			err := itemRows.Scan(
 				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
 				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.ID, &product.Name, &image.ID, &image.ProductID, &image.ThumbnailURL,
@@ -2477,10 +2672,10 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 		itemRows.Close()
 
 		allOrders = append(allOrders, OrderWithItems{
-			Order: order,
-			Items: items,
-		        Products: products,
-		        Images: images,
+			Order:    order,
+			Items:    items,
+			Products: products,
+			Images:   images,
 		})
 	}
 
@@ -2553,7 +2748,6 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 		for itemRows.Next() {
 			var item OrderItemModel
 
-
 			err := itemRows.Scan(
 				&item.ID, &item.OrderID, &item.ProductID, &item.ProductVariantID,
 				&item.Quantity, &item.PriceAtPurchase, &item.TotalPrice, &product.Name, &image.ThumbnailURL,
@@ -2579,9 +2773,9 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"orders": allOrders,
-	        "product_name": product.Name,
-	        "product_thumb": image.ThumbnailURL,
+		"orders":        allOrders,
+		"product_name":  product.Name,
+		"product_thumb": image.ThumbnailURL,
 	})
 }
 
@@ -3111,7 +3305,6 @@ func FinishOrder(c *gin.Context, db *sql.DB) {
 // 	c.JSON(http.StatusOK, gin.H{"message": "Expired orders have been processed"})
 // }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 // =========================
 // ➕ RestockRequest Management

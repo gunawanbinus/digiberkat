@@ -11,6 +11,11 @@ type CategoryModel struct {
 	Description string `json:"description"`
 }
 
+type PositionModel struct {
+	Name        string `json:"position_name"`
+	Description string `json:"description"`
+}
+
 type ProductsModel struct {
 	ID            int       `json:"id"`
 	CategoryID    int       `json:"category_id"`
@@ -36,18 +41,18 @@ type ProductsBasicModel struct {
 	DiscountPrice *int      `json:"discount_price"`
 	Price         *int      `json:"price"`
 	Stock         *int      `json:"stock"`
-	Images        []string  `json:"images"`          // Array URL gambar
-    Thumbnails    []string  `json:"thumbnails"`      // Array thumbnail
-    Variants      []Variant `json:"variants,omitempty"`
+	Images        []string  `json:"images"`     // Array URL gambar
+	Thumbnails    []string  `json:"thumbnails"` // Array thumbnail
+	Variants      []Variant `json:"variants,omitempty"`
 }
 
 type Variant struct {
-    ID            int       `json:"id"`
-	Name          string    `json:"name"`
-	Price         int       `json:"price"`
-	IsDiscounted  bool      `json:"is_discounted"`
-	DiscountPrice *int      `json:"discount_price"` // NULLable
-	Stock         int       `json:"stock"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	Price         int    `json:"price"`
+	IsDiscounted  bool   `json:"is_discounted"`
+	DiscountPrice *int   `json:"discount_price"` // NULLable
+	Stock         int    `json:"stock"`
 }
 
 type ProductVariantModel struct { //color, is_services
@@ -71,23 +76,23 @@ type ProductImageModel struct {
 }
 
 type CartsBasicModel struct {
-	ID      	     int       `json:"id"` // id cart item
+	ID               int       `json:"id"` // id cart item
 	CartID           int       `json:"cart_id"`
 	ProductID        int       `json:"product_id"`
-	ProductVariantID *int      `json:"product_variant_id"` 
-	Name        	 string    `json:"name"`
-	Stock        	 *int      `json:"stock"`
-    Thumbnails		 []string  `json:"thumbnails"`      // Array thumbnail
-    Variants     	 []Variant `json:"variants,omitempty"`
+	ProductVariantID *int      `json:"product_variant_id"`
+	Name             string    `json:"name"`
+	Stock            *int      `json:"stock"`
+	Thumbnails       []string  `json:"thumbnails"` // Array thumbnail
+	Variants         []Variant `json:"variants,omitempty"`
 	Quantity         int       `json:"quantity"`
-	Price		     int       `json:"price"`
+	Price            int       `json:"price"`
 	PricePerItem     int       `json:"price_per_item"`
 	TotalPrice       int       `json:"total_price"`
 }
 
 type CartModel struct {
-	ID         int       `json:"id"` // Sama dengan user_id
-	TotalPrice int       `json:"total_price"`// total harga semua item di cart
+	ID         int       `json:"id"`          // Sama dengan user_id
+	TotalPrice int       `json:"total_price"` // total harga semua item di cart
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
@@ -97,8 +102,8 @@ type CartItemModel struct {
 	ProductID        int       `json:"product_id"`
 	ProductVariantID *int      `json:"product_variant_id"` // bisa NULL, jadi pakai pointer
 	Quantity         int       `json:"quantity"`
-	PricePerItem     int       `json:"price_per_item"`// harga per item
-	TotalPrice       int       `json:"total_price"`// total harga (quantity * price_per_item)
+	PricePerItem     int       `json:"price_per_item"` // harga per item
+	TotalPrice       int       `json:"total_price"`    // total harga (quantity * price_per_item)
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

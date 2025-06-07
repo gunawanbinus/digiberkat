@@ -331,7 +331,7 @@ func findUserByUsername(db *sql.DB, username string) (User, bool) {
 
 func findAdminByUsername(db *sql.DB, username string) (Admin, bool) {
 	var a Admin
-	err := db.QueryRow("SELECT id, username, password FROM admins WHERE username = ?", username).
+	err := db.QueryRow("SELECT username, password FROM admins WHERE username = ?", username).
 		Scan( &a.Username, &a.Password)
 	return a, err == nil
 }
