@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"database/sql"
 	"time"
 )
 
@@ -107,6 +106,21 @@ type CartItemModel struct {
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
+
+type OrderBasicModel struct {
+	ID               int       `json:"id"` // id cart item
+	OrderID           int       `json:"order_id"`
+	ProductID        int       `json:"product_id"`
+	ProductVariantID *int      `json:"product_variant_id"`
+	Name             string    `json:"name"`
+	Thumbnails       []string  `json:"thumbnails"` // Array thumbnail
+	Variants         []Variant `json:"variants,omitempty"`
+	Quantity         int       `json:"quantity"`
+	Price            int       `json:"price"`
+	PriceAtPurchase     int       `json:"price_at_purchase"`
+	TotalPrice       int       `json:"total_price"`
+}
+
 type OrderModel struct {
 	ID         int       `json:"id"`
 	UserID     int       `json:"user_id"`
