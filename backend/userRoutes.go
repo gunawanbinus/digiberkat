@@ -2813,48 +2813,6 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 //	Order CREATE
 //
 // ++++++++++++++++++++++++
-// func CreateStockReservationTx(tx *sql.Tx, orderID, userID int, items []OrderItemModel) error {
-// 	now := time.Now()
-//
-// 	// 1. Insert ke temp_stock_reservations
-// 	res, err := tx.Exec(`
-// 		INSERT INTO temp_stock_reservations (user_id, order_id, reserved_at, expired_at, created_at, updated_at)
-// 		VALUES (?, ?, ?, ?, ?, ?)`,
-// 		userID, orderID, now, now, now, now)
-// 	if err != nil {
-// 		return fmt.Errorf("gagal insert stock reservation: %v", err)
-// 	}
-// 	tempResID, _ := res.LastInsertId()
-//
-// 	// 2. Untuk setiap item, simpan detail dan kurangi stok
-// 	for _, item := range items {
-// 		// Simpan detail
-// 		_, err := tx.Exec(`
-// 			INSERT INTO temp_stock_details (temp_reservation_id, product_id, product_variant_id, quantity, created_at, updated_at)
-// 			VALUES (?, ?, ?, ?, ?, ?)`,
-// 			tempResID, item.ProductID, item.ProductVariantID, item.Quantity, now, now)
-// 		if err != nil {
-// 			return fmt.Errorf("gagal insert detail stock: %v", err)
-// 		}
-//
-// 		// Kurangi stok
-// 		if item.ProductVariantID != nil {
-// 			_, err = tx.Exec(`
-// 				UPDATE product_variants SET stock = stock - ? WHERE id = ? AND stock >= ?`,
-// 				item.Quantity, *item.ProductVariantID, item.Quantity)
-// 		} else {
-// 			_, err = tx.Exec(`
-// 				UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?`,
-// 				item.Quantity, item.ProductID, item.Quantity)
-// 		}
-// 		if err != nil {
-// 			return fmt.Errorf("gagal mengurangi stok: %v", err)
-// 		}
-// 	}
-//
-// 	return nil
-// }
-
 func CreateOrder(c *gin.Context, db *sql.DB) {
 	userID := GetUserID(c)
 
@@ -2972,28 +2930,6 @@ func CreateOrder(c *gin.Context, db *sql.DB) {
 //	Order UPDATE
 //
 // ++++++++++++++++++++++++
-// // start helper
-// func DeleteStockReservationTx(tx *sql.Tx, orderID int) error {
-// 	// Hapus detail reservasi stok
-// 	_, err := tx.Exec(`
-// 		DELETE FROM temp_stock_details
-// 		WHERE temp_reservation_id IN (SELECT id FROM temp_stock_reservations WHERE order_id = ?)
-// 	`, orderID)
-// 	if err != nil {
-// 		return fmt.Errorf("gagal hapus temp_stock_details: %v", err)
-// 	}
-//
-// 	// Hapus reservasi stok
-// 	_, err = tx.Exec(`
-// 		DELETE FROM temp_stock_reservations
-// 		WHERE order_id = ?
-// 	`, orderID)
-// 	if err != nil {
-// 		return fmt.Errorf("gagal hapus temp_stock_reservations: %v", err)
-// 	}
-//
-// 	return nil
-// }
 
 func ReturnStockToInventoryTx(tx *sql.Tx, items []OrderItemModel) error {
 	for _, item := range items {
@@ -3175,163 +3111,6 @@ func FinishOrder(c *gin.Context, db *sql.DB) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Order berhasil diselesaikan"})
 }
-
-// ++++++++++++++++++++++++
-//
-//	Order DELETE
-//
-// ++++++++++++++++++++++++
-// func DeleteStockReservationAndReturn(orderID int, db *sql.DB) {
-// 	// Memulai transaksi
-// 	tx, err := db.Begin()
-// 	if err != nil {
-// 		log.Printf("Failed to begin transaction: %v", err)
-// 		return
-// 	}
-//
-// 	// Pastikan kita melakukan rollback jika terjadi error
-// 	defer tx.Rollback()
-//
-// 	// Ambil semua item yang terkait dengan order dari temp_stock_details
-// 	rows, err := tx.Query(`
-// 		SELECT tsd.product_id, tsd.product_variant_id, tsd.quantity
-// 		FROM temp_stock_details tsd
-// 		LEFT JOIN temp_stock_reservations tsr ON tsr.id = tsd.temp_reservation_id
-// 		WHERE tsr.order_id = ?
-// 	`, orderID)
-// 	if err != nil {
-// 		log.Printf("Failed to get stock details for order %d: %v", orderID, err)
-// 		return
-// 	}
-// 	defer rows.Close()
-//
-// 	var stockDetails []struct {
-// 		ProductID        int
-// 		ProductVariantID *int
-// 		Quantity         int
-// 	}
-//
-// 	// Ambil detail produk dan varian untuk dikembalikan ke inventory
-// 	for rows.Next() {
-// 		var detail struct {
-// 			ProductID        int
-// 			ProductVariantID *int
-// 			Quantity         int
-// 		}
-// 		if err := rows.Scan(&detail.ProductID, &detail.ProductVariantID, &detail.Quantity); err != nil {
-// 			log.Printf("Failed to scan stock details for order %d: %v", orderID, err)
-// 			return
-// 		}
-// 		stockDetails = append(stockDetails, detail)
-// 	}
-//
-// 	// Hapus temp_stock_reservations dan temp_stock_details
-// 	_, err = tx.Exec(`
-// 		DELETE tsd FROM temp_stock_details tsd
-// 		JOIN temp_stock_reservations tsr ON tsr.id = tsd.temp_reservation_id
-// 		WHERE tsr.order_id = ?
-// 	`, orderID)
-// 	if err != nil {
-// 		log.Printf("Failed to delete temp stock details for order %d: %v", orderID, err)
-// 		return
-// 	}
-//
-// 	_, err = tx.Exec(`
-// 		DELETE FROM temp_stock_reservations WHERE order_id = ?
-// 	`, orderID)
-// 	if err != nil {
-// 		log.Printf("Failed to delete temp stock reservations for order %d: %v", orderID, err)
-// 		return
-// 	}
-//
-// 	// Kembalikan stok ke inventory
-// 	for _, detail := range stockDetails {
-// 		var execErr error
-// 		if detail.ProductVariantID != nil {
-// 			// Update stok untuk product variant
-// 			_, execErr = tx.Exec(`
-// 				UPDATE product_variants
-// 				SET stock = stock + ?
-// 				WHERE id = ?
-// 			`, detail.Quantity, *detail.ProductVariantID)
-// 		} else {
-// 			// Update stok untuk product utama
-// 			_, execErr = tx.Exec(`
-// 				UPDATE products
-// 				SET stock = stock + ?
-// 				WHERE id = ?
-// 			`, detail.Quantity, detail.ProductID)
-// 		}
-// 		if execErr != nil {
-// 			log.Printf("Failed to update stock for product %d or variant %v: %v", detail.ProductID, detail.ProductVariantID, execErr)
-// 			return
-// 		}
-// 	}
-//
-// 	// Commit transaksi jika semuanya berhasil
-// 	if err := tx.Commit(); err != nil {
-// 		log.Printf("Failed to commit transaction: %v", err)
-// 	}
-// }
-
-// func CheckAndExpireOrders(c *gin.Context, db *sql.DB) {
-// 	// Query untuk mengambil semua order dengan status 'waitToBuy' dan timer_expiration yang lewat
-// 	rows, err := db.Query(`
-// 		SELECT o.id, o.user_id, o.timer_expiration
-// 		FROM orders o
-// 		WHERE o.status = 'waitToBuy' AND o.timer_expiration < NOW()
-// 	`)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check expired orders"})
-// 		return
-// 	}
-// 	defer rows.Close()
-//
-// 	var expiredOrders []struct {
-// 		OrderID int `json:"order_id"`
-// 		UserID  int `json:"user_id"`
-// 	}
-//
-// 	// Ambil semua order yang sudah kadaluarsa
-// 	for rows.Next() {
-// 		var order struct {
-// 			OrderID int `json:"order_id"`
-// 			UserID  int `json:"user_id"`
-// 		}
-// 		if err := rows.Scan(&order.OrderID, &order.UserID); err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan order data"})
-// 			return
-// 		}
-// 		expiredOrders = append(expiredOrders, order)
-// 	}
-//
-// 	// Pastikan tidak ada error setelah iterasi rows
-// 	if err := rows.Err(); err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error iterating rows"})
-// 		return
-// 	}
-//
-// 	// Proses setiap order yang kadaluarsa
-// 	for _, order := range expiredOrders {
-// 		// Update status order menjadi 'expired'
-// 		_, err := db.Exec(`
-// 			UPDATE orders
-// 			SET status = 'expired'
-// 			WHERE id = ?
-// 		`, order.OrderID)
-// 		if err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order status"})
-// 			return
-// 		}
-//
-// 		// Hapus temp_stock_reservations terkait order ini dan kembalikan stok ke inventory
-// 		DeleteStockReservationAndReturn(order.OrderID, db)
-// 	}
-//
-// 	// Response sukses
-// 	c.JSON(http.StatusOK, gin.H{"message": "Expired orders have been processed"})
-// }
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // =========================
 // ➕ RestockRequest Management
@@ -3761,3 +3540,121 @@ func GetNotificationByID(c *gin.Context, db *sql.DB) {
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// =========================
+// Statistik untuk web admin
+// =========================
+
+func StatRoutes(r *gin.Engine, db *sql.DB) {
+	statGroup := r.Group("/api/v1/stats")
+
+	addRoute(statGroup, "GET", "/sales", []string{"admin"}, GetSalesPerMonth, db) // Lihat nominal penjualan per bulan dalam setahun terakhir
+	addRoute(statGroup, "GET", "/lowstocks", []string{"admin"}, GetLowStocks, db) // Lihat produk yang hampir atau sudah habis
+}
+
+func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
+	// Ambil nominal penjualan per bulan dalam setahun terakhir dari query
+	rows, err := db.Query(`
+		SELECT DATE_FORMAT(created_at, '%M %Y') AS month, SUM(total_price) AS total_sales
+		FROM orders
+		WHERE status = 'done' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+	        GROUP BY month
+	        ORDER BY created_at DESC;
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar penjualan"})
+		return
+	}
+	defer rows.Close()
+
+	type SalesPerMonth struct {
+		Month      string   `json:"month"`
+		TotalSales int      `json:"total_sales"`
+	}
+
+	var results []SalesPerMonth
+
+	for rows.Next() {
+		var sales SalesPerMonth
+		err := rows.Scan(
+			&sales.Month,
+			&sales.TotalSales,
+		)
+		if err != nil {
+			continue
+		}
+
+		results = append(results, sales)
+	}
+
+	if len(results) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "⚠️ Data penjualan kosong",
+			"data":    []SalesPerMonth{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "✅ Berhasil mengambil data penjualan per bulan selama setahun",
+		"data":    results,
+	})
+}
+
+func GetLowStocks(c *gin.Context, db *sql.DB) {
+	// Ambil produk yang stok <= 1
+	rows, err := db.Query(`
+		SELECT p.id, p.name, pi.thumbnail_url, pv.id, pv.name, COALESCE(pv.stock, p.stock)
+		FROM products p
+		LEFT JOIN product_variants pv ON p.id = pv.product_id
+		LEFT JOIN product_images pi ON p.id = pi.product_id
+		WHERE (p.stock <= 1 AND p.stock IS NOT NULL) OR (pv.stock <= 1 AND pv.stock IS NOT NULL)
+		ORDER BY p.id, pv.id;
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar produk"})
+		return
+	}
+	defer rows.Close()
+
+	type LowStockProducts struct {
+		ProductID        int       `json:"product_id"`
+		ProductName      string    `json:"product_name"`
+		Thumbnail        string    `json:"thumbnail"`
+		VariantID        int       `json:"variant_id"`
+		VariantName      string    `json:"variant_name"`
+		Stock            int       `json:"stock"`
+	}
+
+	var products []LowStockProducts
+
+	for rows.Next() {
+		var product LowStockProducts
+		err := rows.Scan(
+			&product.ProductID,
+			&product.ProductName,
+		        &product.Thumbnail,
+			&product.VariantID,
+			&product.VariantName,
+			&product.Stock,
+		)
+		if err != nil {
+			continue
+		}
+
+		products = append(products, product)
+	}
+
+	if len(products) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "⚠️ Tidak ada produk",
+			"data":    []LowStockProducts{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "✅ Berhasil mengambil data produk",
+		"data":    products,
+	})
+}
