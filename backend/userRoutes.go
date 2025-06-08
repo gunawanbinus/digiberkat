@@ -3,12 +3,13 @@ package main
 
 import (
 	"database/sql"
-	"regexp"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -416,10 +417,8 @@ func DeleteCategory(c *gin.Context, db *sql.DB) {
 func PositionRoutes(r *gin.Engine, db *sql.DB) {
 	api := r.Group("/api/v1/position")
 
-	// Public GET
+	// Admin only: GET, POST, PATCH, DELETE
 	addRoute(api, "GET", "", []string{"admin"}, GetAllPosition, db)
-
-	// Admin only: POST, PATCH, DELETE
 	addRoute(api, "POST", "", []string{"admin"}, CreatePosition, db)
 	addRoute(api, "PATCH", "", []string{"admin"}, UpdatePosition, db)
 	addRoute(api, "DELETE", "", []string{"admin"}, DeletePosition, db)
@@ -2504,13 +2503,13 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 				"updated_at":  order.UpdatedAt,
 			},
 			"sample_item": gin.H{
-				"order_item_id":       item.ID,
-				"product_id":          item.ProductID,
-				"product_name":        product.Name,
-				"variant":             variant,
-				"quantity":            item.Quantity,
-				"price_at_purchase":   item.PriceAtPurchase,
-				"thumbnail":           thumbnails[0],
+				"order_item_id":     item.ID,
+				"product_id":        item.ProductID,
+				"product_name":      product.Name,
+				"variant":           variant,
+				"quantity":          item.Quantity,
+				"price_at_purchase": item.PriceAtPurchase,
+				"thumbnail":         thumbnails[0],
 			},
 		}
 
@@ -2588,13 +2587,13 @@ func GetAllOrders(c *gin.Context, db *sql.DB) {
 				"updated_at":  order.UpdatedAt,
 			},
 			"sample_item": gin.H{
-				"order_item_id":       item.ID,
-				"product_id":          item.ProductID,
-				"product_name":        product.Name,
-				"variant":             variant,
-				"quantity":            item.Quantity,
-				"price_at_purchase":   item.PriceAtPurchase,
-				"thumbnail":           thumbnails[0],
+				"order_item_id":     item.ID,
+				"product_id":        item.ProductID,
+				"product_name":      product.Name,
+				"variant":           variant,
+				"quantity":          item.Quantity,
+				"price_at_purchase": item.PriceAtPurchase,
+				"thumbnail":         thumbnails[0],
 			},
 		}
 
@@ -2661,14 +2660,14 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 		// 3e. Build response
 		responseItem := OrderBasicModel{
 			ID:               item.ID,
-			OrderID:           item.OrderID,
+			OrderID:          item.OrderID,
 			ProductID:        item.ProductID,
 			ProductVariantID: item.ProductVariantID,
 			Name:             product.Name,
 			Thumbnails:       []string{thumbnails[0]}, // Only first thumbnail
 			Quantity:         item.Quantity,
 			Price:            getBasePrice(product, variant),
-			PriceAtPurchase:     item.PriceAtPurchase,
+			PriceAtPurchase:  item.PriceAtPurchase,
 			TotalPrice:       item.TotalPrice,
 		}
 
@@ -2681,8 +2680,8 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":          "✅ Berhasil mengambil item order",
-		"data":             responseItems,
+		"message":           "✅ Berhasil mengambil item order",
+		"data":              responseItems,
 		"total_order_price": totalOrderPrice,
 	})
 }
@@ -2781,13 +2780,13 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 				"updated_at":  order.UpdatedAt,
 			},
 			"sample_item": gin.H{
-				"order_item_id":       item.ID,
-				"product_id":          item.ProductID,
-				"product_name":        product.Name,
-				"variant":             variant,
-				"quantity":            item.Quantity,
-				"price_at_purchase":   item.PriceAtPurchase,
-				"thumbnail":           thumbnails[0],
+				"order_item_id":     item.ID,
+				"product_id":        item.ProductID,
+				"product_name":      product.Name,
+				"variant":           variant,
+				"quantity":          item.Quantity,
+				"price_at_purchase": item.PriceAtPurchase,
+				"thumbnail":         thumbnails[0],
 			},
 		}
 
@@ -3568,8 +3567,8 @@ func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
 	defer rows.Close()
 
 	type SalesPerMonth struct {
-		Month      string   `json:"month"`
-		TotalSales int      `json:"total_sales"`
+		Month      string `json:"month"`
+		TotalSales int    `json:"total_sales"`
 	}
 
 	var results []SalesPerMonth
@@ -3618,12 +3617,12 @@ func GetLowStocks(c *gin.Context, db *sql.DB) {
 	defer rows.Close()
 
 	type LowStockProducts struct {
-		ProductID        int       `json:"product_id"`
-		ProductName      string    `json:"product_name"`
-		Thumbnail        string    `json:"thumbnail"`
-		VariantID        int       `json:"variant_id"`
-		VariantName      string    `json:"variant_name"`
-		Stock            int       `json:"stock"`
+		ProductID   int    `json:"product_id"`
+		ProductName string `json:"product_name"`
+		Thumbnail   string `json:"thumbnail"`
+		VariantID   int    `json:"variant_id"`
+		VariantName string `json:"variant_name"`
+		Stock       int    `json:"stock"`
 	}
 
 	var products []LowStockProducts
@@ -3633,7 +3632,7 @@ func GetLowStocks(c *gin.Context, db *sql.DB) {
 		err := rows.Scan(
 			&product.ProductID,
 			&product.ProductName,
-		        &product.Thumbnail,
+			&product.Thumbnail,
 			&product.VariantID,
 			&product.VariantName,
 			&product.Stock,
