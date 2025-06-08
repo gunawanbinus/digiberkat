@@ -70,7 +70,7 @@ func handleLoginWithRole(c *gin.Context, db *sql.DB) {
 			}
 			return
 		} else {
-			//c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Email tidak ditemukan sebagai user"})
+			//c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Username tidak ditemukan sebagai user"})
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Username tidak ditemukan"})
 		}
 	case "admin":
@@ -81,8 +81,8 @@ func handleLoginWithRole(c *gin.Context, db *sql.DB) {
 			}
 			return
 		} else {
-			//c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Email tidak ditemukan sebagai admin"})
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Email tidak ditemukan"})
+			//c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Username tidak ditemukan sebagai admin"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Username tidak ditemukan"})
 		}
 	case "employee":
 		if emp, found := findEmployeeByUsername(db, username); found {
@@ -92,8 +92,8 @@ func handleLoginWithRole(c *gin.Context, db *sql.DB) {
 			}
 			return
 		} else {
-			//c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Email tidak ditemukan sebagai employee"})
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Email tidak ditemukan"})
+			//c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Username tidak ditemukan sebagai employee"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "❌ Username tidak ditemukan"})
 		}
 	}
 }
@@ -220,18 +220,18 @@ func handleEmployeeRegister(c *gin.Context, db *sql.DB) {
 
 
 	// Untuk employee
-	// periksa apakah email sudah terdaftar
+	// periksa apakah username sudah terdaftar
 	// jika sudah terdaftar, kembalikan status 409 Conflict
 	if _, found := findEmployeeByUsername(db, strings.ToLower(input.Username)); found {
 		c.JSON(http.StatusConflict, gin.H{"error": "❌ Username sudah terdaftar"})
 		return
 	}
-	//periksa format email
-	// jika tidak valid, kembalikan status 400 Bad Request
-	if !strings.Contains(input.Username, "@") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Format Username harus berupa email yang valid"})
+
+	if len(input.Username) < 3 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Username minimal 3 karakter"})
 		return
 	}
+
 	// periksa panjang password
 	// jika kurang dari 6 karakter, kembalikan status 400 Bad Request
 	if len(input.Password) < 6 {
@@ -279,12 +279,6 @@ func handleAdminRegister(c *gin.Context, db *sql.DB) {
         return
     }
 
-    // Validasi format email
-    if !strings.Contains(input.Username, "@") {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Format username harus berupa email yang valid"})
-        return
-    }
-
     // Validasi panjang password
     if len(input.Password) < 8 {
         c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Password minimal 8 karakter"})
@@ -295,6 +289,11 @@ func handleAdminRegister(c *gin.Context, db *sql.DB) {
     if _, found := findAdminByUsername(db, strings.ToLower(input.Username)); found {
         c.JSON(http.StatusConflict, gin.H{"error": "❌ Username sudah terdaftar"})
         return
+    }
+
+    if len(input.Username) < 3 {
+	c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Username minimal 3 karakter"})
+	return
     }
 
     // Enkripsi password

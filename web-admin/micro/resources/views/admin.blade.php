@@ -18,7 +18,7 @@
 
     <div id="layoutSidenav">
     @include('layouts.partials.sidebar') {{-- Ini bagian sidebar --}}
-    
+
     <div id="layoutSidenav_content">
         <main>
             <div class="container-fluid px-4">
@@ -36,6 +36,6 @@
     <script src="{{ asset('admin/js/scripts.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
     <script src="{{ asset('admin/js/datatables-simple-demo.js') }}"></script>
-
+    @yield('scripts')
 </body>
 </html>

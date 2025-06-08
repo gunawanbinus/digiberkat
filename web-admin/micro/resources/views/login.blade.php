@@ -271,11 +271,6 @@
         <button type="submit" class="btn btn-primary btn-login w-100 mb-3">
           <i class="fas fa-sign-in-alt me-2"></i>Masuk
         </button>
-
-        <div class="login-footer">
-          Belum punya akun?
-          {{-- <a href="{{ route('admin.register') }}">Daftar sekarang</a> --}}
-        </div>
       </form>
     </div>
   </div>
