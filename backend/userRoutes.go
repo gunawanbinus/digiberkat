@@ -104,7 +104,7 @@ func SetRequiredFieldsForNonVariant(product *ProductsModel) error {
 	if product.Stock == nil || *product.Stock < 0 {
 		return fmt.Errorf("❌ Stok wajib diisi dan tidak boleh negatif")
 	}
-	if product.IsDiscounted == true {
+	if product.IsDiscounted {
 		if product.DiscountPrice == nil {
 			return fmt.Errorf("❌ Harga diskon wajib diisi jika produk sedang diskon")
 		}
