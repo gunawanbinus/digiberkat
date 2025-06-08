@@ -617,6 +617,7 @@ func ProductRoutes(r *gin.Engine, db *sql.DB) {
 	addRoute(api, "GET", "", []string{}, GetAllProducts, db)
 	addRoute(api, "GET", ":category_id", []string{}, GetAllProducts, db)
 	addRoute(api, "GET", "id/:id_product", []string{}, GetAllProducts, db)
+	addRoute(api, "GET", "search", []string{}, SearchProducts, db)
 }
 
 func GetAllProducts(c *gin.Context, db *sql.DB) {
@@ -845,6 +846,72 @@ func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
 		variants = append(variants, v)
 	}
 	return variants, nil
+}
+
+func SearchProducts(c *gin.Context, db *sql.DB) {
+	queryStr := c.Query("q")
+	if queryStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Parameter 'q' (query) harus diisi"})
+		return
+	}
+
+	likeQuery := "%" + strings.ToLower(queryStr) + "%"
+
+	rows, err := db.Query(`
+		SELECT id, category_id, name, description,
+		       is_varians, is_discounted, discount_price,
+		       price, stock
+		FROM products
+		WHERE LOWER(name) LIKE ?
+	`, likeQuery)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal melakukan pencarian produk"})
+		return
+	}
+	defer rows.Close()
+
+	var products []ProductsBasicModel
+	for rows.Next() {
+		var p ProductsBasicModel
+		err := rows.Scan(
+			&p.ID, &p.CategoryID, &p.Name, &p.Description,
+			&p.IsVarians, &p.IsDiscounted, &p.DiscountPrice,
+			&p.Price, &p.Stock,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal membaca hasil pencarian"})
+			return
+		}
+		products = append(products, p)
+	}
+
+	// Lengkapi gambar & varian
+	for i := range products {
+		images, thumbnails, err := getProductImages(db, products[i].ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil gambar produk"})
+			return
+		}
+		products[i].Images = images
+		products[i].Thumbnails = thumbnails
+
+		if products[i].IsVarians {
+			variants, err := getProductVariants(db, products[i].ID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil varian produk"})
+				return
+			}
+			products[i].Variants = variants
+			products[i].Price = nil
+			products[i].DiscountPrice = nil
+			products[i].Stock = nil
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "✅ Hasil pencarian produk",
+		"data":    products,
+	})
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
