@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jun 05, 2025 at 07:33 AM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Waktu pembuatan: 08 Jun 2025 pada 14.04
+-- Versi server: 10.4.32-MariaDB
+-- Versi PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -21,10 +21,70 @@ SET time_zone = "+00:00";
 -- Database: `digiberkat`
 --
 
+DELIMITER $$
+--
+-- Prosedur
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `auto_expire_orders` ()   BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE order_id INT;
+    DECLARE cart_item_id INT;
+    DECLARE product_id INT;
+    DECLARE product_variant_id INT;
+    DECLARE quantity INT;
+
+    -- Cursor untuk mengambil order yang memenuhi syarat
+    DECLARE order_cursor CURSOR FOR
+        SELECT id FROM orders WHERE status = 'pending' AND created_at < NOW() - INTERVAL 24 HOUR;
+    -- Cursor untuk mengembalikan stok untuk setiap item dalam order
+     DECLARE item_cursor CURSOR FOR
+        SELECT id, product_id, product_variant_id, quantity FROM order_items WHERE order_id = order_id;
+
+    -- Handler untuk mengakhiri cursor
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    -- Mulai loop untuk memproses setiap order
+    OPEN order_cursor;
+
+    read_loop: LOOP
+        FETCH order_cursor INTO order_id;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+
+        -- Ubah status order menjadi 'expired'
+        UPDATE orders SET status = 'expired' WHERE id = order_id;
+
+        -- Mengembalikan stok untuk setiap item dalam order
+        OPEN item_cursor;
+
+        item_loop: LOOP
+            FETCH item_cursor INTO cart_item_id, product_id, product_variant_id, quantity;
+            IF done THEN
+                LEAVE item_loop;
+            END IF;
+
+            -- Jika item tidak memiliki varian
+            IF product_variant_id IS NULL THEN
+                UPDATE products SET stock = stock + quantity WHERE id = product_id;
+            ELSE
+                -- Jika item memiliki varian
+                UPDATE product_variants SET stock = stock + quantity WHERE id = product_variant_id;
+            END IF;
+        END LOOP item_loop;
+
+        CLOSE item_cursor;
+    END LOOP read_loop;
+
+    CLOSE order_cursor;
+END$$
+
+DELIMITER ;
+
 -- --------------------------------------------------------
 
 --
--- Table structure for table `admins`
+-- Struktur dari tabel `admins`
 --
 
 CREATE TABLE `admins` (
@@ -38,7 +98,7 @@ CREATE TABLE `admins` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `carts`
+-- Struktur dari tabel `carts`
 --
 
 CREATE TABLE `carts` (
@@ -52,7 +112,7 @@ CREATE TABLE `carts` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `cart_items`
+-- Struktur dari tabel `cart_items`
 --
 
 CREATE TABLE `cart_items` (
@@ -70,7 +130,7 @@ CREATE TABLE `cart_items` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `categories`
+-- Struktur dari tabel `categories`
 --
 
 CREATE TABLE `categories` (
@@ -80,7 +140,7 @@ CREATE TABLE `categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `categories`
+-- Dumping data untuk tabel `categories`
 --
 
 INSERT INTO `categories` (`id`, `name`, `description`) VALUES
@@ -96,7 +156,7 @@ INSERT INTO `categories` (`id`, `name`, `description`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `employees`
+-- Struktur dari tabel `employees`
 --
 
 CREATE TABLE `employees` (
@@ -112,7 +172,7 @@ CREATE TABLE `employees` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `notifications`
+-- Struktur dari tabel `notifications`
 --
 
 CREATE TABLE `notifications` (
@@ -126,7 +186,7 @@ CREATE TABLE `notifications` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `orders`
+-- Struktur dari tabel `orders`
 --
 
 CREATE TABLE `orders` (
@@ -143,7 +203,7 @@ CREATE TABLE `orders` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `order_items`
+-- Struktur dari tabel `order_items`
 --
 
 CREATE TABLE `order_items` (
@@ -159,7 +219,7 @@ CREATE TABLE `order_items` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `position`
+-- Struktur dari tabel `position`
 --
 
 CREATE TABLE `position` (
@@ -168,7 +228,7 @@ CREATE TABLE `position` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `position`
+-- Dumping data untuk tabel `position`
 --
 
 INSERT INTO `position` (`position_name`, `description`) VALUES
@@ -179,7 +239,7 @@ INSERT INTO `position` (`position_name`, `description`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `products`
+-- Struktur dari tabel `products`
 --
 
 CREATE TABLE `products` (
@@ -198,7 +258,7 @@ CREATE TABLE `products` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `products`
+-- Dumping data untuk tabel `products`
 --
 
 INSERT INTO `products` (`id`, `category_id`, `name`, `description`, `is_varians`, `is_discounted`, `discount_price`, `price`, `stock`, `search_vector`, `created_at`, `updated_at`) VALUES
@@ -211,7 +271,7 @@ INSERT INTO `products` (`id`, `category_id`, `name`, `description`, `is_varians`
 -- --------------------------------------------------------
 
 --
--- Table structure for table `product_images`
+-- Struktur dari tabel `product_images`
 --
 
 CREATE TABLE `product_images` (
@@ -222,7 +282,7 @@ CREATE TABLE `product_images` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `product_images`
+-- Dumping data untuk tabel `product_images`
 --
 
 INSERT INTO `product_images` (`id`, `product_id`, `image_url`, `thumbnail_url`) VALUES
@@ -236,7 +296,7 @@ INSERT INTO `product_images` (`id`, `product_id`, `image_url`, `thumbnail_url`) 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `product_variants`
+-- Struktur dari tabel `product_variants`
 --
 
 CREATE TABLE `product_variants` (
@@ -253,7 +313,7 @@ CREATE TABLE `product_variants` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `product_variants`
+-- Dumping data untuk tabel `product_variants`
 --
 
 INSERT INTO `product_variants` (`id`, `product_id`, `name`, `price`, `is_discounted`, `discount_price`, `stock`, `search_vector`, `created_at`, `updated_at`) VALUES
@@ -267,7 +327,7 @@ INSERT INTO `product_variants` (`id`, `product_id`, `name`, `price`, `is_discoun
 -- --------------------------------------------------------
 
 --
--- Table structure for table `restock_requests`
+-- Struktur dari tabel `restock_requests`
 --
 
 CREATE TABLE `restock_requests` (
@@ -283,7 +343,7 @@ CREATE TABLE `restock_requests` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `users`
+-- Struktur dari tabel `users`
 --
 
 CREATE TABLE `users` (
@@ -301,20 +361,20 @@ CREATE TABLE `users` (
 --
 
 --
--- Indexes for table `admins`
+-- Indeks untuk tabel `admins`
 --
 ALTER TABLE `admins`
   ADD PRIMARY KEY (`username`);
 
 --
--- Indexes for table `carts`
+-- Indeks untuk tabel `carts`
 --
 ALTER TABLE `carts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_carts_user` (`user_id`);
 
 --
--- Indexes for table `cart_items`
+-- Indeks untuk tabel `cart_items`
 --
 ALTER TABLE `cart_items`
   ADD PRIMARY KEY (`id`),
@@ -323,13 +383,13 @@ ALTER TABLE `cart_items`
   ADD KEY `fk_cart_items_variant` (`product_variant_id`);
 
 --
--- Indexes for table `categories`
+-- Indeks untuk tabel `categories`
 --
 ALTER TABLE `categories`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `employees`
+-- Indeks untuk tabel `employees`
 --
 ALTER TABLE `employees`
   ADD PRIMARY KEY (`id`),
@@ -337,14 +397,14 @@ ALTER TABLE `employees`
   ADD KEY `fk_employee_position` (`position_name`);
 
 --
--- Indexes for table `notifications`
+-- Indeks untuk tabel `notifications`
 --
 ALTER TABLE `notifications`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_notifications_user` (`user_id`);
 
 --
--- Indexes for table `orders`
+-- Indeks untuk tabel `orders`
 --
 ALTER TABLE `orders`
   ADD PRIMARY KEY (`id`),
@@ -352,7 +412,7 @@ ALTER TABLE `orders`
   ADD KEY `fk_orders_cart` (`cart_user_id`);
 
 --
--- Indexes for table `order_items`
+-- Indeks untuk tabel `order_items`
 --
 ALTER TABLE `order_items`
   ADD PRIMARY KEY (`id`),
@@ -361,34 +421,34 @@ ALTER TABLE `order_items`
   ADD KEY `fk_order_items_variant` (`product_variant_id`);
 
 --
--- Indexes for table `position`
+-- Indeks untuk tabel `position`
 --
 ALTER TABLE `position`
   ADD PRIMARY KEY (`position_name`);
 
 --
--- Indexes for table `products`
+-- Indeks untuk tabel `products`
 --
 ALTER TABLE `products`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_products_category` (`category_id`);
 
 --
--- Indexes for table `product_images`
+-- Indeks untuk tabel `product_images`
 --
 ALTER TABLE `product_images`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_product_images_product` (`product_id`);
 
 --
--- Indexes for table `product_variants`
+-- Indeks untuk tabel `product_variants`
 --
 ALTER TABLE `product_variants`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_product_variants_product` (`product_id`);
 
 --
--- Indexes for table `restock_requests`
+-- Indeks untuk tabel `restock_requests`
 --
 ALTER TABLE `restock_requests`
   ADD PRIMARY KEY (`id`),
@@ -397,100 +457,100 @@ ALTER TABLE `restock_requests`
   ADD KEY `fk_restock_variant` (`product_variant_id`);
 
 --
--- Indexes for table `users`
+-- Indeks untuk tabel `users`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `username` (`username`);
 
 --
--- AUTO_INCREMENT for dumped tables
+-- AUTO_INCREMENT untuk tabel yang dibuang
 --
 
 --
--- AUTO_INCREMENT for table `admins`
+-- AUTO_INCREMENT untuk tabel `admins`
 --
 ALTER TABLE `admins`
   MODIFY `username` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `cart_items`
+-- AUTO_INCREMENT untuk tabel `cart_items`
 --
 ALTER TABLE `cart_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `categories`
+-- AUTO_INCREMENT untuk tabel `categories`
 --
 ALTER TABLE `categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
--- AUTO_INCREMENT for table `employees`
+-- AUTO_INCREMENT untuk tabel `employees`
 --
 ALTER TABLE `employees`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `notifications`
+-- AUTO_INCREMENT untuk tabel `notifications`
 --
 ALTER TABLE `notifications`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `orders`
+-- AUTO_INCREMENT untuk tabel `orders`
 --
 ALTER TABLE `orders`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `order_items`
+-- AUTO_INCREMENT untuk tabel `order_items`
 --
 ALTER TABLE `order_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `products`
+-- AUTO_INCREMENT untuk tabel `products`
 --
 ALTER TABLE `products`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'ID wajib', AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT for table `product_images`
+-- AUTO_INCREMENT untuk tabel `product_images`
 --
 ALTER TABLE `product_images`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT for table `product_variants`
+-- AUTO_INCREMENT untuk tabel `product_variants`
 --
 ALTER TABLE `product_variants`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT for table `restock_requests`
+-- AUTO_INCREMENT untuk tabel `restock_requests`
 --
 ALTER TABLE `restock_requests`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `users`
+-- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- Constraints for dumped tables
+-- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
 --
 
 --
--- Constraints for table `carts`
+-- Ketidakleluasaan untuk tabel `carts`
 --
 ALTER TABLE `carts`
   ADD CONSTRAINT `fk_carts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `cart_items`
+-- Ketidakleluasaan untuk tabel `cart_items`
 --
 ALTER TABLE `cart_items`
   ADD CONSTRAINT `fk_cart_items_cart` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -498,26 +558,26 @@ ALTER TABLE `cart_items`
   ADD CONSTRAINT `fk_cart_items_variant` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `employees`
+-- Ketidakleluasaan untuk tabel `employees`
 --
 ALTER TABLE `employees`
   ADD CONSTRAINT `fk_employee_position` FOREIGN KEY (`position_name`) REFERENCES `position` (`position_name`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `notifications`
+-- Ketidakleluasaan untuk tabel `notifications`
 --
 ALTER TABLE `notifications`
   ADD CONSTRAINT `fk_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
--- Constraints for table `orders`
+-- Ketidakleluasaan untuk tabel `orders`
 --
 ALTER TABLE `orders`
   ADD CONSTRAINT `fk_orders_cart` FOREIGN KEY (`cart_user_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `order_items`
+-- Ketidakleluasaan untuk tabel `order_items`
 --
 ALTER TABLE `order_items`
   ADD CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -525,25 +585,25 @@ ALTER TABLE `order_items`
   ADD CONSTRAINT `fk_order_items_variant` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `products`
+-- Ketidakleluasaan untuk tabel `products`
 --
 ALTER TABLE `products`
   ADD CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `product_images`
+-- Ketidakleluasaan untuk tabel `product_images`
 --
 ALTER TABLE `product_images`
   ADD CONSTRAINT `fk_product_images_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `product_variants`
+-- Ketidakleluasaan untuk tabel `product_variants`
 --
 ALTER TABLE `product_variants`
   ADD CONSTRAINT `fk_product_variants_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `restock_requests`
+-- Ketidakleluasaan untuk tabel `restock_requests`
 --
 ALTER TABLE `restock_requests`
   ADD CONSTRAINT `fk_restock_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -551,6 +611,13 @@ ALTER TABLE `restock_requests`
   ADD CONSTRAINT `fk_restock_variant` FOREIGN KEY (`product_variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 DELIMITER $$
+--
+-- Event
+--
+CREATE DEFINER=`digiberkat`@`localhost` EVENT `run_auto_expire_orders` ON SCHEDULE EVERY 1 HOUR STARTS '2025-06-08 19:03:57' ON COMPLETION NOT PRESERVE ENABLE DO CALL auto_expire_orders()$$
+
+DELIMITER ;
+COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
