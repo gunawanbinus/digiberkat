@@ -3193,7 +3193,7 @@ func RestockRequestRoutes(r *gin.Engine, db *sql.DB) {
 	employeeAdminRestock := r.Group("/api/v1/restock-requests")
 	employeeAdminRestock.Use(AuthMiddleware(), RoleMiddleware("employee", "admin"))
 	{
-		addRoute(employeeAdminRestock, "GET", "", []string{"employee", "admin"}, GetAllRestockRequests, db)
+		addRoute(employeeAdminRestock, "GET", "", []string{"employee", "admin"}, GetUnreadRestockRequests, db)
 	}
 
 	// 🔐 Khusus admin
@@ -3210,49 +3210,96 @@ func RestockRequestRoutes(r *gin.Engine, db *sql.DB) {
 //	RestockRequest READ
 //
 // ++++++++++++++++++++++++
-func GetAllRestockRequests(c *gin.Context, db *sql.DB) {
-	status := c.Query("status")
-	productID := c.Query("product_id")
+// func GetAllRestockRequests(c *gin.Context, db *sql.DB) {
+// 	status := c.Query("status")
+// 	productID := c.Query("product_id")
+//
+// 	// Menyusun query dasar untuk mengambil permintaan restock
+// 	query := `SELECT id, user_id, product_id, product_variant_id, message, status, created_at FROM restock_requests WHERE 1=1`
+// 	args := []interface{}{}
+//
+// 	// Menambahkan filter jika status diberikan
+// 	if status != "" {
+// 		query += ` AND status = ?`
+// 		args = append(args, status)
+// 	}
+//
+// 	// Menambahkan filter jika product_id diberikan
+// 	if productID != "" {
+// 		query += ` AND product_id = ?`
+// 		args = append(args, productID)
+// 	}
+//
+// 	// Menjalankan query
+// 	rows, err := db.Query(query, args...)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data permintaan restock"})
+// 		return
+// 	}
+// 	defer rows.Close()
+//
+// 	// Mengambil data dari query
+// 	var requests []RestockRequestModel
+// 	for rows.Next() {
+// 		var r RestockRequestModel
+// 		if err := rows.Scan(&r.ID, &r.UserID, &r.ProductID, &r.ProductVariantID, &r.Message, &r.Status, &r.CreatedAt); err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal membaca data"})
+// 			return
+// 		}
+// 		requests = append(requests, r)
+// 	}
+//
+// 	// Menyusun response
+// 	c.JSON(http.StatusOK, gin.H{
+// 		"message": "✅ Semua permintaan restock berhasil diambil",
+// 		"data":    requests,
+// 	})
+// }
 
-	// Menyusun query dasar untuk mengambil permintaan restock
-	query := `SELECT id, user_id, product_id, product_variant_id, message, status, created_at FROM restock_requests WHERE 1=1`
-	args := []interface{}{}
-
-	// Menambahkan filter jika status diberikan
-	if status != "" {
-		query += ` AND status = ?`
-		args = append(args, status)
-	}
-
-	// Menambahkan filter jika product_id diberikan
-	if productID != "" {
-		query += ` AND product_id = ?`
-		args = append(args, productID)
-	}
-
-	// Menjalankan query
-	rows, err := db.Query(query, args...)
+func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
+	rows, err := db.Query(`
+		SELECT
+			p.id AS product_id,
+			p.name AS product_name,
+			COALESCE(pi.thumbnail_url, '') AS thumbnail,
+			pv.id AS variant_id,
+			pv.name AS variant_name,
+			COALESCE(pv.stock, p.stock) AS stock
+		FROM restock_requests rr
+		JOIN products p ON rr.product_id = p.id
+		LEFT JOIN product_variants pv ON rr.product_variant_id = pv.id
+		LEFT JOIN product_images pi ON p.id = pi.product_id
+		WHERE rr.status = 'unread'
+		GROUP BY p.id, pv.id
+		ORDER BY rr.created_at ASC
+	`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data permintaan restock"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil permintaan restock"})
 		return
 	}
 	defer rows.Close()
 
-	// Mengambil data dari query
-	var requests []RestockRequestModel
-	for rows.Next() {
-		var r RestockRequestModel
-		if err := rows.Scan(&r.ID, &r.UserID, &r.ProductID, &r.ProductVariantID, &r.Message, &r.Status, &r.CreatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal membaca data"})
-			return
-		}
-		requests = append(requests, r)
+	type RestockDisplay struct {
+		ProductID   int    `json:"product_id"`
+		ProductName string `json:"product_name"`
+		Thumbnail   string `json:"thumbnail"`
+		VariantID   int    `json:"variant_id"`
+		VariantName string `json:"variant_name"`
+		Stock       int    `json:"stock"`
 	}
 
-	// Menyusun response
+	var results []RestockDisplay
+	for rows.Next() {
+		var r RestockDisplay
+		if err := rows.Scan(&r.ProductID, &r.ProductName, &r.Thumbnail, &r.VariantID, &r.VariantName, &r.Stock); err != nil {
+			continue
+		}
+		results = append(results, r)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "✅ Semua permintaan restock berhasil diambil",
-		"data":    requests,
+		"message": "✅ Berhasil mengambil data produk",
+		"data":    results,
 	})
 }
 

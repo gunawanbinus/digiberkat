@@ -35,13 +35,13 @@ Route::get('/', function () {
 Route::get('/login', [LoginController::class, 'index'])->name('login');
 Route::post('/login', function (Request $request) {
     $request->validate([
-        'email' => 'required|string',
+        'username' => 'required|string',
         'password' => 'required|string',
         'role' => 'required|in:admin,employee',
     ]);
 
     $payload = [
-        'username' => $request->input('email'),
+        'username' => $request->input('username'),
         'password' => $request->input('password'),
         'role' => $request->input('role'),
     ];
@@ -95,32 +95,26 @@ Route::get('/admin/charts', function () {
 });
 
 Route::get('/admin/dashboard', function () {
-    // Ambil token dari session Laravel
     $token = session('token');
-
-    // Cek apakah user sudah login
     if (!$token) {
-        return redirect('/login')->with('error', 'Silakan login untuk mengakses dashboard.');
+        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
     }
 
-    $baseUrl = rtrim(env('GOLANG_API_URL'), '/'); // pastikan tidak ada trailing slash
+    $baseUrl = rtrim(env('GOLANG_API_URL'), '/');
     $headers = [
         'Authorization' => 'Bearer ' . $token,
         'Accept' => 'application/json'
     ];
 
     try {
-        // Panggil API Go
         $pendingOrders = Http::withHeaders($headers)->get("{$baseUrl}/orders/all/pending")->json('data') ?? [];
         $sales = Http::withHeaders($headers)->get("{$baseUrl}/stats/sales")->json('data') ?? [];
         $lowStocks = Http::withHeaders($headers)->get("{$baseUrl}/stats/lowstocks")->json('data') ?? [];
+        $restockRequests = Http::withHeaders($headers)->get("{$baseUrl}/restock-requests")->json('data') ?? [];
     } catch (\Exception $e) {
         return view('admin.dashboard')->withErrors(['API error: ' . $e->getMessage()]);
     }
 
-    return view('admin.dashboard', compact('pendingOrders', 'sales', 'lowStocks'));
+    return view('admin.dashboard', compact('pendingOrders', 'sales', 'lowStocks', 'restockRequests'));
 })->name('dashboard');
-
-
-
 

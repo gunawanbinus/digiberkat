@@ -1,19 +1,19 @@
 @extends('admin')
 
-@section('title', 'Admin Dashboard')
+@section('title', 'Dashboard Admin')
 
 @section('content')
 <div class="container py-4">
   <div class="row">
     <div class="col-md-12">
-      <h2 class="mb-4">Dashboard Admin</h2>
+      <h2 class="mb-4">Dashboard</h2>
 
       <div class="row">
         <!-- Pending Orders -->
         <div class="col-md-6">
           <div class="card mb-4">
             <div class="card-header d-flex justify-content-between">
-              <span>Pesanan Belum Diproses</span>
+              <span>Pesanan Pending</span>
               <a href="/orders?status=pending">Lihat semua</a>
             </div>
             <div class="card-body" style="max-height: 300px; overflow-y: auto">
@@ -30,6 +30,43 @@
                   </li>
                 @endforeach
               </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Restock Requests -->
+        <div class="col-md-6">
+          <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between">
+              <span>Permintaan Restok</span>
+              <a href="/restock-requests">Lihat semua</a>
+            </div>
+            <div class="card-body" style="max-height: 300px; overflow-y: auto">
+              <ul class="list-group list-group-flush">
+                @foreach($restockRequests as $item)
+                  <li class="list-group-item list-group-item-action" onclick="location.href='/products/{{ $item['product_id'] }}'">
+                    <div class="d-flex align-items-center">
+                      <img src="{{ $item['thumbnail'] }}" width="40" height="40" class="me-2 rounded">
+                      <div>
+                        <div>{{ $item['product_name'] }} - {{ $item['variant_name'] }}</div>
+                        <small class="text-muted">Stok: {{ $item['stock'] }}</small>
+                      </div>
+                    </div>
+                  </li>
+                @endforeach
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sales Chart -->
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card mb-4">
+            <div class="card-header">Penjualan per Bulan</div>
+            <div class="card-body">
+              <canvas id="salesChart" style="height: 300px;"></canvas>
             </div>
           </div>
         </div>
@@ -55,18 +92,6 @@
                   </li>
                 @endforeach
               </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sales Chart (full width) -->
-      <div class="row">
-        <div class="col-md-12">
-          <div class="card mb-4">
-            <div class="card-header">Penjualan per Bulan</div>
-            <div class="card-body">
-              <canvas id="salesChart" style="height: 300px;"></canvas>
             </div>
           </div>
         </div>

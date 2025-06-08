@@ -38,7 +38,7 @@ func main() {
 	ProductRoutes(r, db)
 	// CategoryRoutes(r, db)
 	// ProductImageRoutes(r, db)
-	// RestockRequestRoutes(r, db)
+	RestockRequestRoutes(r, db)
 	// NotificationRoutes(r, db)
 	// ProductVariantRoutes(r, db)
 	// CartRoutes(r, db)

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Waktu pembuatan: 08 Jun 2025 pada 14.04
+-- Waktu pembuatan: 08 Jun 2025 pada 21.12
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -88,12 +88,20 @@ DELIMITER ;
 --
 
 CREATE TABLE `admins` (
-  `username` int(11) NOT NULL,
+  `id` int(11) NOT NULL,
+  `username` varchar(100) NOT NULL,
   `thumbnail_url` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL COMMENT 'Password terenkripsi',
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `admins`
+--
+
+INSERT INTO `admins` (`id`, `username`, `thumbnail_url`, `password`, `created_at`, `updated_at`) VALUES
+(1, 'admin@example.com', 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png', '$2a$10$MS5krNtkY30VwugIrbdGruw/U3JB7tSdNnXnom.0Rw4sfqB8PIsZK', '2025-06-08 14:14:59', '2025-06-08 14:14:59');
 
 -- --------------------------------------------------------
 
@@ -108,6 +116,13 @@ CREATE TABLE `carts` (
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `carts`
+--
+
+INSERT INTO `carts` (`id`, `user_id`, `total_price`, `created_at`, `updated_at`) VALUES
+(1, 1, 0, '2025-06-08 22:20:24', '2025-06-09 01:09:43');
 
 -- --------------------------------------------------------
 
@@ -200,6 +215,14 @@ CREATE TABLE `orders` (
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data untuk tabel `orders`
+--
+
+INSERT INTO `orders` (`id`, `user_id`, `cart_user_id`, `status`, `total_price`, `expired_at`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 'done', 60000, '2025-06-08 15:25:40', '2025-06-08 15:25:40', '2025-06-08 18:13:28'),
+(2, 1, 1, 'pending', 194000, '2025-06-08 18:11:02', '2025-06-08 18:11:02', '2025-06-08 18:11:02');
+
 -- --------------------------------------------------------
 
 --
@@ -215,6 +238,16 @@ CREATE TABLE `order_items` (
   `price_at_purchase` int(11) NOT NULL COMMENT 'Harga yang dibekukan saat checkout',
   `total_price` int(11) NOT NULL COMMENT 'quantity * price_at_purchase'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `order_items`
+--
+
+INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `product_variant_id`, `quantity`, `price_at_purchase`, `total_price`) VALUES
+(1, 1, 1, NULL, 2, 10000, 20000),
+(2, 1, 3, 1, 2, 20000, 40000),
+(3, 2, 3, 2, 2, 22000, 44000),
+(4, 2, 5, 6, 1, 150000, 150000);
 
 -- --------------------------------------------------------
 
@@ -262,7 +295,7 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `category_id`, `name`, `description`, `is_varians`, `is_discounted`, `discount_price`, `price`, `stock`, `search_vector`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Gantungan Kunci Anime', 'Gantungan kunci karakter anime dari akrilik.', 0, 0, NULL, 10000, 50, NULL, '2025-05-26 16:58:40', '2025-05-26 16:58:40'),
+(1, 1, 'Gantungan Kunci Anime', 'Gantungan kunci karakter anime dari akrilik.', 0, 0, NULL, 10000, 48, NULL, '2025-05-26 16:58:40', '2025-05-26 16:58:40'),
 (2, 2, 'Casing HP iPhone 13', 'Casing transparan anti-selip untuk iPhone 13.', 0, 1, 35000, 50000, 30, NULL, '2025-05-26 16:58:40', '2025-05-26 16:58:40'),
 (3, 3, 'Tempered Glass Universal', 'Tempered Glass untuk berbagai ukuran layar.', 1, 0, NULL, NULL, NULL, NULL, '2025-05-26 16:58:40', '2025-05-26 16:58:40'),
 (4, 4, 'Phone Holder Mobil', 'Holder HP untuk mobil, bisa putar 360 derajat.', 1, 0, NULL, NULL, NULL, NULL, '2025-05-26 16:58:40', '2025-05-26 16:58:40'),
@@ -317,12 +350,12 @@ CREATE TABLE `product_variants` (
 --
 
 INSERT INTO `product_variants` (`id`, `product_id`, `name`, `price`, `is_discounted`, `discount_price`, `stock`, `search_vector`, `created_at`, `updated_at`) VALUES
-(1, 3, 'Tempered Glass 5.5 inch', 20000, 0, NULL, 40, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
-(2, 3, 'Tempered Glass 6.1 inch', 22000, 0, NULL, 30, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
+(1, 3, 'Tempered Glass 5.5 inch', 20000, 0, NULL, 38, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
+(2, 3, 'Tempered Glass 6.1 inch', 22000, 0, NULL, 28, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
 (3, 4, 'Holder Dashboard', 30000, 1, 25000, 20, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
 (4, 4, 'Holder AC Vent', 28000, 0, NULL, 25, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
 (5, 5, 'Headphone Warna Hitam', 150000, 1, 125000, 15, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36'),
-(6, 5, 'Headphone Warna Merah', 150000, 0, NULL, 10, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36');
+(6, 5, 'Headphone Warna Merah', 150000, 0, NULL, 9, NULL, '2025-05-26 16:59:36', '2025-05-26 16:59:36');
 
 -- --------------------------------------------------------
 
@@ -339,6 +372,13 @@ CREATE TABLE `restock_requests` (
   `status` enum('unread','read','done') NOT NULL DEFAULT 'unread',
   `created_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `restock_requests`
+--
+
+INSERT INTO `restock_requests` (`id`, `user_id`, `product_id`, `product_variant_id`, `message`, `status`, `created_at`) VALUES
+(1, 1, 5, 6, 'hmm', 'unread', '2025-06-09 01:39:32');
 
 -- --------------------------------------------------------
 
@@ -357,6 +397,13 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
+-- Dumping data untuk tabel `users`
+--
+
+INSERT INTO `users` (`id`, `username`, `thumbnail_url`, `password`, `phone`, `created_at`, `updated_at`) VALUES
+(1, 'aa@gm.com', 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png', '$2a$10$YTdgaIu29GcJWd8FJlrWPOtI0hI4vr0zV3xWcYtqYd5zWcYuYaOJS', NULL, '2025-06-08 22:20:24', '2025-06-08 22:20:24');
+
+--
 -- Indexes for dumped tables
 --
 
@@ -364,7 +411,7 @@ CREATE TABLE `users` (
 -- Indeks untuk tabel `admins`
 --
 ALTER TABLE `admins`
-  ADD PRIMARY KEY (`username`);
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indeks untuk tabel `carts`
@@ -471,13 +518,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT untuk tabel `admins`
 --
 ALTER TABLE `admins`
-  MODIFY `username` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT untuk tabel `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT untuk tabel `categories`
@@ -501,13 +548,13 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT untuk tabel `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT untuk tabel `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT untuk tabel `products`
@@ -531,13 +578,13 @@ ALTER TABLE `product_variants`
 -- AUTO_INCREMENT untuk tabel `restock_requests`
 --
 ALTER TABLE `restock_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)

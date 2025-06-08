@@ -224,12 +224,12 @@
         @csrf
 
         <div class="mb-3">
-          <label for="email" class="form-label">Email</label>
-          <input type="email" class="form-control" id="email" name="email"
-                 placeholder="contoh@email.com" required
-                 value="{{ old('email') }}">
+          <label for="username" class="form-label">Username</label>
+          <input type="text" class="form-control" id="username" name="username"
+                placeholder="Masukkan username" required
+                value="{{ old('username') }}">
           <div class="invalid-feedback">
-            Harap masukkan email yang valid
+                Harap masukkan username yang valid
           </div>
         </div>
 
