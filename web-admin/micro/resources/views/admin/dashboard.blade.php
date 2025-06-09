@@ -13,7 +13,7 @@
         <div class="col-md-6">
           <div class="card mb-4">
             <div class="card-header d-flex justify-content-between">
-              <span>Pesanan Pending</span>
+              <span>Pesanan Belum Diproses</span>
               <a href="/orders?status=pending">Lihat semua</a>
             </div>
             <div class="card-body" style="max-height: 300px; overflow-y: auto">
@@ -49,7 +49,7 @@
                       <img src="{{ $item['thumbnail'] }}" width="40" height="40" class="me-2 rounded">
                       <div>
                         <div>{{ $item['product_name'] }} - {{ $item['variant_name'] }}</div>
-                        <small class="text-muted">Stok: {{ $item['stock'] }}</small>
+                        <small class="text-danger">Stok: {{ $item['stock'] }}</small>
                       </div>
                     </div>
                   </li>
@@ -75,8 +75,8 @@
         <div class="col-md-6">
           <div class="card mb-4">
             <div class="card-header d-flex justify-content-between">
-              <span>Stok Rendah</span>
-              <a href="/products">Lihat semua</a>
+              <span>Stok Rendah dan Habis</span>
+              <a href="/products/lowstocks">Lihat semua</a>
             </div>
             <div class="card-body" style="max-height: 300px; overflow-y: auto">
               <ul class="list-group list-group-flush">

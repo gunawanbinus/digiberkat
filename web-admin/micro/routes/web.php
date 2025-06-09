@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 
@@ -14,7 +15,7 @@ Route::middleware(['check.login', 'check.token'])->group(function () {
     // return view('admin.dashboard');
     // ;
 
-    Route::get('/products', [ProductController::class, 'index']);
+
     Route::get('/productss', [ProductController::class, 'index1']);
 });
 
@@ -24,13 +25,25 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(fun
     Route::post('/employee/register', [LoginController::class, 'doEmployeeRegister'])->name('employee.register.do');
 });
 
-
+Route::get('/products', [ProductController::class, 'index'], function () {
+    $token = session('token');
+    if (!$token) {
+        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
+    }
+})->name('products.index');
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
-// Route::get('/login', 'LoginController@index')->name('login');
-// Route::post('/login', 'LoginController@authenticate')->name('login.post');
+
+Route::get('/orders/all', [OrderController::class, 'index'], function () {
+    $token = session('token');
+    if (!$token) {
+        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
+    }
+})->name('orders.index');
+
+// Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
 
 Route::get('/login', [LoginController::class, 'index'])->name('login');
 Route::post('/login', function (Request $request) {
@@ -108,13 +121,26 @@ Route::get('/admin/dashboard', function () {
 
     try {
         $pendingOrders = Http::withHeaders($headers)->get("{$baseUrl}/orders/all/pending")->json('data') ?? [];
+        usort($pendingOrders, fn($a, $b) => $a['order']['id'] <=> $b['order']['id']);
+
         $sales = Http::withHeaders($headers)->get("{$baseUrl}/stats/sales")->json('data') ?? [];
+        usort($sales, fn($a, $b) => strtotime($a['month']) <=> strtotime($b['month']));
+
         $lowStocks = Http::withHeaders($headers)->get("{$baseUrl}/stats/lowstocks")->json('data') ?? [];
+        usort($lowStocks, fn($a, $b) => $a['stock'] <=> $b['stock']);
+
         $restockRequests = Http::withHeaders($headers)->get("{$baseUrl}/restock-requests")->json('data') ?? [];
+        usort($restockRequests, fn($a, $b) => $a['product_id'] <=> $b['product_id']);
+
     } catch (\Exception $e) {
         return view('admin.dashboard')->withErrors(['API error: ' . $e->getMessage()]);
     }
 
+    $pendingOrders = array_slice($pendingOrders, 0, 15);
+        $restockRequests = array_slice($restockRequests, 0, 15);
+        $lowStocks = array_slice($lowStocks, 0, 15);
+
     return view('admin.dashboard', compact('pendingOrders', 'sales', 'lowStocks', 'restockRequests'));
 })->name('dashboard');
+
 
