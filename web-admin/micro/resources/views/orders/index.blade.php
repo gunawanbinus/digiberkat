@@ -37,9 +37,13 @@
                         <td>{{ $item['product_name'] }}</td>
                         <td>
                             @if($order['status'] === 'pending')
-                                <span class="badge bg-warning text-dark">Pending</span>
+                                <span class="badge bg-warning text-dark">Belum Diproses</span>
                             @elseif($order['status'] === 'done')
                                 <span class="badge bg-success">Selesai</span>
+                            @elseif($order['status'] === 'expired')
+                                <span class="badge bg-secondary">Kadaluarsa</span>
+                            @elseif($order['status'] === 'cancelled')
+                                <span class="badge bg-secondary">Dibatalkan</span>
                             @else
                                 <span class="badge bg-secondary">{{ ucfirst($order['status']) }}</span>
                             @endif

@@ -8,7 +8,7 @@
     <div class="col-md-12">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Semua Produk</h2>
-        <a href="" class="btn btn-primary">Tambah Produk</a>
+        <a href="{{ route('products.create') }}" class="btn btn-primary">Tambah Produk</a>
       </div>
       <p class="text-muted">Klik pada kepala tabel untuk mengurutkan berdasarkan kolom. Klik pada produk untuk mengedit.</p>
 

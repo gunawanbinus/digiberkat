@@ -14,9 +14,6 @@ Route::middleware(['check.login', 'check.token'])->group(function () {
     // Route::get('/admin/dashboard', function () {
     // return view('admin.dashboard');
     // ;
-
-
-    Route::get('/productss', [ProductController::class, 'index1']);
 });
 
 // Route ini hanya bisa diakses oleh admin
@@ -43,7 +40,18 @@ Route::get('/orders/all', [OrderController::class, 'index'], function () {
     }
 })->name('orders.index');
 
-// Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+Route::post('/orders/{id}/finish', function ($id) {
+    $token = session('token');
+
+    $response = Http::withToken($token)->put(env('GOLANG_API_URL') . "orders/{$id}/finish");
+
+    if ($response->successful()) {
+        return redirect()->route('orders.index')->with('success', 'Pesanan selesai.');
+    }
+
+    return back()->with('error', 'Gagal menyelesaikan pesanan');
+})->name('orders.finish');
 
 Route::get('/login', [LoginController::class, 'index'])->name('login');
 Route::post('/login', function (Request $request) {
