@@ -1685,7 +1685,7 @@ func CartItemRoutes(r *gin.Engine, db *sql.DB) {
 // Cart Item CREATE MY CART
 // +++++++++++++++++++++++++++++++++
 func CreateCartItem(c *gin.Context, db *sql.DB) {
-	userID := GetUserID(c) // cart_id juga
+	userID := GetUserID(c) // Sama dengan cart_id
 
 	var input struct {
 		ProductID        int  `json:"product_id"`
@@ -1697,115 +1697,268 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Input tidak valid"})
 		return
 	}
-	// Cek apakah input ada product_id dan quantity
-	if input.ProductID == 0 || input.Quantity == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ product_id dan quantity harus diisi"})
-		return
-	}
-	// Cek apakah product_id valid
-	if !ValidateRecordExistence(c, db, "products", input.ProductID) {
+	if input.ProductID == 0 || input.Quantity <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ product_id dan quantity harus diisi dengan benar"})
 		return
 	}
 
-	// Cek apakah cart ada
-	if !ValidateRecordExistence(c, db, "carts", userID) {
+	// Validasi keberadaan product dan cart
+	if !ValidateRecordExistence(c, db, "products", input.ProductID) || !ValidateRecordExistence(c, db, "carts", userID) {
 		return
 	}
 
-	// Ambil data product: is_varians, price, stock
+	// Ambil info produk
 	var isVarians bool
-	var is_discounted *bool
-	var productPrice, productStock, discount_price *int
+	var isDiscounted *bool
+	var price, stock, discountPrice *int
 	err := db.QueryRow(`
-		SELECT is_varians, price, stock, is_discounted, discount_price FROM products WHERE id = ?
-	`, input.ProductID).Scan(&isVarians, &productPrice, &productStock, &is_discounted, &discount_price)
+		SELECT is_varians, price, stock, is_discounted, discount_price
+		FROM products WHERE id = ?
+	`, input.ProductID).Scan(&isVarians, &price, &stock, &isDiscounted, &discountPrice)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk tidak ditemukan"})
 		return
 	}
 
-	var stockAvailable int
 	var pricePerItem int
+	var stockAvailable int
 
-	// Kalau pakai variant
 	if isVarians {
 		if input.ProductVariantID == nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Product variant harus diisi karena produk punya variasi"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk ini memiliki variasi. Harap isi product_variant_id"})
 			return
 		}
-		var isDiscount bool
-		var productVarPrice int
-		var productVarDisprice *int
-		// Ambil stok dari variant
+		// Ambil data variant
+		var isVarDisc bool
+		var varPrice int
+		var varDiscPrice *int
 		err := db.QueryRow(`
-			SELECT stock, price, is_discounted, discount_price FROM product_variants WHERE id = ? AND product_id = ?
-		`, int(*input.ProductVariantID), input.ProductID).Scan(&stockAvailable, &productVarPrice, &isDiscount, &productVarDisprice)
+			SELECT stock, price, is_discounted, discount_price
+			FROM product_variants
+			WHERE id = ? AND product_id = ?
+		`, *input.ProductVariantID, input.ProductID).Scan(&stockAvailable, &varPrice, &isVarDisc, &varDiscPrice)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Variant tidak ditemukan untuk produk ini"})
 			return
 		}
-		// Cek apakah variant ada diskon
-		if isDiscount {
-			pricePerItem = *productVarDisprice
-		} else {
-			pricePerItem = productVarPrice
+		pricePerItem = varPrice
+		if isVarDisc && varDiscPrice != nil {
+			pricePerItem = *varDiscPrice
 		}
 	} else {
 		if input.ProductVariantID != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk ini tidak memiliki variasi, hapus product_variant_id"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk ini tidak memiliki variasi. Hapus product_variant_id"})
 			return
 		}
-		stockAvailable = *productStock
-		if *is_discounted {
-			pricePerItem = *discount_price
-		} else {
-			pricePerItem = *productPrice
+		stockAvailable = *stock
+		pricePerItem = *price
+		if *isDiscounted && discountPrice != nil {
+			pricePerItem = *discountPrice
 		}
 	}
 
-	if input.Quantity <= 0 || input.Quantity > stockAvailable {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Quantity melebihi stok atau tidak valid"})
+	if input.Quantity > stockAvailable {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Quantity melebihi stok tersedia"})
 		return
 	}
 
 	totalPrice := input.Quantity * pricePerItem
 
-	// Tambahkan ke total cart dulu
-	if err := AddToCartTotalPrice(db, userID, totalPrice); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
+	// Cek apakah item dengan kombinasi yang sama sudah ada di cart
+	var existingID, existingQty, existingTotal int
+	var query string
+	var row *sql.Row
+
+	if input.ProductVariantID == nil {
+		query = `
+			SELECT id, quantity, total_price FROM cart_items
+			WHERE cart_id = ? AND product_id = ? AND product_variant_id IS NULL
+		`
+		row = db.QueryRow(query, userID, input.ProductID)
+	} else {
+		query = `
+			SELECT id, quantity, total_price FROM cart_items
+			WHERE cart_id = ? AND product_id = ? AND product_variant_id = ?
+		`
+		row = db.QueryRow(query, userID, input.ProductID, input.ProductVariantID)
+	}
+
+	err = row.Scan(&existingID, &existingQty, &existingTotal)
+	if err == nil {
+		// Item sudah ada → update quantity
+		newQty := existingQty + input.Quantity
+		if newQty > stockAvailable {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Quantity total melebihi stok tersedia"})
+			return
+		}
+		newTotal := newQty * pricePerItem
+
+		_, err = db.Exec(`
+			UPDATE cart_items
+			SET quantity = ?, total_price = ?, updated_at = NOW()
+			WHERE id = ?
+		`, newQty, newTotal, existingID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update item cart"})
+			return
+		}
+
+		// Perbarui total cart (selisihnya saja)
+		diff := newTotal - existingTotal
+		if err := AddToCartTotalPrice(db, userID, diff); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "✅ Quantity item diperbarui di cart"})
 		return
 	}
 
-	// Insert cart item
+	// Tidak ada duplikat → insert item baru
 	_, err = db.Exec(`
 		INSERT INTO cart_items
 		(cart_id, product_id, product_variant_id, quantity, price_per_item, total_price, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
 	`, userID, input.ProductID, input.ProductVariantID, input.Quantity, pricePerItem, totalPrice)
 	if err != nil {
-		// Rollback kalau gagal insert
-		_ = SubtractFromCartTotalPrice(db, userID, totalPrice)
-
+		_ = SubtractFromCartTotalPrice(db, userID, totalPrice) // rollback if needed
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menambahkan item ke cart"})
+		return
+	}
+
+	// Tambahkan total ke cart
+	if err := AddToCartTotalPrice(db, userID, totalPrice); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "✅ Item berhasil ditambahkan ke cart"})
 }
 
+
 // +++++++++++++++++++++++++++++++++
 // Cart Item READ MY CART
 // +++++++++++++++++++++++++++++++++
+// func MyCartItems(c *gin.Context, db *sql.DB) {
+// 	userID := GetUserID(c)
+
+// 	// 1. Verify user exists
+// 	if !ValidateRecordExistence(c, db, "users", userID) {
+// 		c.JSON(http.StatusNotFound, gin.H{"error": "❌ User tidak ditemukan"})
+// 		return
+// 	}
+
+// 	// 2. Get cart items
+// 	cartItems, err := getCartItems(db, userID)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data cart"})
+// 		return
+// 	}
+
+// 	if len(cartItems) == 0 {
+// 		c.JSON(http.StatusOK, gin.H{
+// 			"message": "⚠️ Keranjang kosong",
+// 			"data":    []CartsBasicModel{},
+// 		})
+// 		return
+// 	}
+
+// 	// 3. Process each item
+// 	var (
+// 		updatedItems   []CartsBasicModel
+// 		totalCartPrice int
+// 		needsUpdate    bool
+// 	)
+
+// 	for _, item := range cartItems {
+// 		// 3a. Get current product data
+// 		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memeriksa produk"})
+// 			return
+// 		}
+
+// 		// 3b. Determine current price
+// 		currentPrice := getCurrentPrice(product, variant)
+// 		currentStock := getCurrentStock(product, variant)
+
+// 		// 3c. Check if update needed
+// 		if item.PricePerItem != currentPrice {
+// 			oldTotal := item.Quantity * item.PricePerItem
+// 			newTotal := item.Quantity * currentPrice
+// 			diff := newTotal - oldTotal
+
+// 			// Update cart item
+// 			err = updateCartItem(db, item.ID, currentPrice, newTotal)
+// 			if err != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memperbarui item cart"})
+// 				return
+// 			}
+
+// 			// Update cart total
+// 			err = updateCartTotal(db, userID, diff)
+// 			if err != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memperbarui total cart"})
+// 				return
+// 			}
+
+// 			needsUpdate = true
+// 			item.PricePerItem = currentPrice
+// 			item.TotalPrice = newTotal
+// 		}
+
+// 		// 3d. Get product images
+// 		_, thumbnails, err := getProductImages(db, item.ProductID)
+// 		if err != nil || len(thumbnails) == 0 {
+// 			thumbnails = []string{"https://via.placeholder.com/150"}
+// 		}
+
+// 		// 3e. Build response
+// 		responseItem := CartsBasicModel{
+// 			ID:               item.ID,
+// 			CartID:           item.CartID,
+// 			ProductID:        item.ProductID,
+// 			ProductVariantID: item.ProductVariantID,
+// 			Name:             product.Name,
+// 			Stock:            &currentStock,
+// 			Thumbnails:       []string{thumbnails[0]}, // Only first thumbnail
+// 			Quantity:         item.Quantity,
+// 			Price:            getBasePrice(product, variant),
+// 			PricePerItem:     item.PricePerItem,
+// 			TotalPrice:       item.TotalPrice,
+// 		}
+
+// 		if variant != nil {
+// 			responseItem.Variants = []Variant{*variant}
+// 		}
+
+// 		updatedItems = append(updatedItems, responseItem)
+// 		totalCartPrice += item.TotalPrice
+// 	}
+
+// 	// 4. If prices were updated, get fresh cart total
+// 	if needsUpdate {
+// 		totalCartPrice, err = getCartTotal(db, userID)
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memverifikasi total cart"})
+// 			return
+// 		}
+// 	}
+
+// 	c.JSON(http.StatusOK, gin.H{
+// 		"message":          "✅ Berhasil mengambil item cart",
+// 		"data":             updatedItems,
+// 		"total_cart_price": totalCartPrice,
+// 	})
+// }
 func MyCartItems(c *gin.Context, db *sql.DB) {
 	userID := GetUserID(c)
 
-	// 1. Verify user exists
 	if !ValidateRecordExistence(c, db, "users", userID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "❌ User tidak ditemukan"})
 		return
 	}
 
-	// 2. Get cart items
 	cartItems, err := getCartItems(db, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data cart"})
@@ -1820,7 +1973,6 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// 3. Process each item
 	var (
 		updatedItems   []CartsBasicModel
 		totalCartPrice int
@@ -1828,34 +1980,46 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 	)
 
 	for _, item := range cartItems {
-		// 3a. Get current product data
-		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
+		product, err := getSingleProductWithVariantsAndImages(db, item.ProductID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memeriksa produk"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memuat produk"})
 			return
 		}
 
-		// 3b. Determine current price
-		currentPrice := getCurrentPrice(product, variant)
-		currentStock := getCurrentStock(product, variant)
+		// Ambil variant jika ada
+		var selectedVariant *Variant
+		if item.ProductVariantID != nil {
+			for _, v := range product.Variants {
+				if v.ID == *item.ProductVariantID {
+					selectedVariant = &v
+					break
+				}
+			}
+			if selectedVariant == nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "❌ Varian tidak ditemukan"})
+				return
+			}
+		}
 
-		// 3c. Check if update needed
+		// Hitung harga & stok saat ini
+		currentPrice := getCurrentPrice(product, selectedVariant)
+		currentStock := getCurrentStock(product, selectedVariant)
+
+		// Update jika perlu
 		if item.PricePerItem != currentPrice {
 			oldTotal := item.Quantity * item.PricePerItem
 			newTotal := item.Quantity * currentPrice
 			diff := newTotal - oldTotal
 
-			// Update cart item
 			err = updateCartItem(db, item.ID, currentPrice, newTotal)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memperbarui item cart"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update item cart"})
 				return
 			}
 
-			// Update cart total
 			err = updateCartTotal(db, userID, diff)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memperbarui total cart"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total cart"})
 				return
 			}
 
@@ -1864,13 +2028,7 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 			item.TotalPrice = newTotal
 		}
 
-		// 3d. Get product images
-		_, thumbnails, err := getProductImages(db, item.ProductID)
-		if err != nil || len(thumbnails) == 0 {
-			thumbnails = []string{"https://via.placeholder.com/150"}
-		}
-
-		// 3e. Build response
+		// Build respons item cart
 		responseItem := CartsBasicModel{
 			ID:               item.ID,
 			CartID:           item.CartID,
@@ -1878,22 +2036,21 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 			ProductVariantID: item.ProductVariantID,
 			Name:             product.Name,
 			Stock:            &currentStock,
-			Thumbnails:       []string{thumbnails[0]}, // Only first thumbnail
+			Thumbnails:       product.Thumbnails,
 			Quantity:         item.Quantity,
-			Price:            getBasePrice(product, variant),
+			Price:            getBasePrice(product, selectedVariant),
 			PricePerItem:     item.PricePerItem,
 			TotalPrice:       item.TotalPrice,
 		}
 
-		if variant != nil {
-			responseItem.Variants = []Variant{*variant}
+		if selectedVariant != nil {
+			responseItem.Variants = []Variant{*selectedVariant}
 		}
 
 		updatedItems = append(updatedItems, responseItem)
 		totalCartPrice += item.TotalPrice
 	}
 
-	// 4. If prices were updated, get fresh cart total
 	if needsUpdate {
 		totalCartPrice, err = getCartTotal(db, userID)
 		if err != nil {
@@ -1941,39 +2098,97 @@ func getCartItems(db *sql.DB, cartID int) ([]CartItemModel, error) {
 	return items, nil
 }
 
-func getProductDetails(db *sql.DB, productID int, variantID *int) (ProductsBasicModel, *Variant, error) {
-	// Get basic product info
-	products, err := getBasicProducts(db, "")
-	if err != nil {
-		return ProductsBasicModel{}, nil, err
-	}
-
+func getSingleProductWithVariantsAndImages(db *sql.DB, productID int) (ProductsBasicModel, error) {
 	var product ProductsBasicModel
-	for _, p := range products {
-		if p.ID == productID {
-			product = p
-			break
-		}
+	err := db.QueryRow(`
+        SELECT id, category_id, name, description,
+               is_varians, is_discounted, discount_price, price, stock
+        FROM products WHERE id = ?`, productID).
+		Scan(&product.ID, &product.CategoryID, &product.Name, &product.Description,
+			&product.IsVarians, &product.IsDiscounted, &product.DiscountPrice,
+			&product.Price, &product.Stock)
+	if err != nil {
+		return product, err
 	}
 
-	// Get variant if exists
-	var variant *Variant
-	if variantID != nil {
-		variants, err := getProductVariants(db, productID)
-		if err != nil {
-			return ProductsBasicModel{}, nil, err
-		}
+	// Variants
+	product.Variants, _ = getProductVariants(db, productID)
 
-		for _, v := range variants {
-			if v.ID == *variantID {
-				variant = &v
-				break
-			}
-		}
-	}
+	// Images
+	product.Images, product.Thumbnails, _ = getProductImages(db, productID)
 
-	return product, variant, nil
+	return product, nil
 }
+
+
+
+
+// func getProductDetails(db *sql.DB, productID int, variantID *int) (ProductsBasicModel, *Variant, error) {
+// 	// Get basic product info
+// 	products, err := getBasicProducts(db, "")
+// 	if err != nil {
+// 		return ProductsBasicModel{}, nil, err
+// 	}
+
+// 	var product ProductsBasicModel
+// 	for _, p := range products {
+// 		if p.ID == productID {
+// 			product = p
+// 			break
+// 		}
+// 	}
+
+// 	// Get variant if exists
+// 	var variant *Variant
+// 	if variantID != nil {
+// 		variants, err := getProductVariants(db, productID)
+// 		if err != nil {
+// 			return ProductsBasicModel{}, nil, err
+// 		}
+
+// 		for _, v := range variants {
+// 			if v.ID == *variantID {
+// 				variant = &v
+// 				break
+// 			}
+// 		}
+// 	}
+
+// 	return product, variant, nil
+// }
+// func getProductDetails(db *sql.DB, productID int, variantID *int) (ProductsBasicModel, *Variant, error) {
+// 	var product ProductsBasicModel
+// 	err := db.QueryRow(`
+// 		SELECT id, name, description, price, discount_price, stock
+// 		FROM products
+// 		WHERE id = ?`, productID).Scan(
+// 		&product.ID, &product.Name, &product.Description,
+// 		&product.Price, &product.DiscountPrice, &product.Stock,
+// 	)
+// 	if err != nil {
+// 		return ProductsBasicModel{}, nil, err
+// 	}
+
+// 	var variant *Variant
+// 	if variantID != nil {
+// 		var v Variant
+// 		err := db.QueryRow(`
+// 			SELECT id, product_id, name, stock, price, discount_price
+// 			FROM product_variants
+// 			WHERE id = ? AND product_id = ?`, *variantID, productID).Scan(
+// 			&v.ID, &v.ProductID, &v.Name, &v.Stock,
+// 			&v.Price, &v.DiscountPrice,
+// 		)
+// 		if err != nil {
+// 			// If variant not found, we return without variant
+// 			return product, nil, nil
+// 		}
+// 		variant = &v
+// 	}
+
+// 	return product, variant, nil
+// }
+
 
 func getCurrentPrice(product ProductsBasicModel, variant *Variant) int {
 	if variant != nil {
@@ -2013,19 +2228,14 @@ func updateCartItem(db *sql.DB, itemID int, newPrice int, newTotal int) error {
 }
 
 func updateCartTotal(db *sql.DB, cartID int, diff int) error {
-	if diff > 0 {
-		_, err := db.Exec(`
-            UPDATE carts
-            SET total_price = total_price + ?, updated_at = NOW()
-            WHERE id = ?`,
-			diff, cartID)
-		return err
-	} else if diff < 0 {
-		_, err := db.Exec(`
-            UPDATE carts
-            SET total_price = total_price - ?, updated_at = NOW()
-            WHERE id = ?`,
-			-diff, cartID)
+	if diff != 0 {
+		sign := "+"
+		if diff < 0 {
+			sign = "-"
+			diff = -diff
+		}
+		query := fmt.Sprintf("UPDATE carts SET total_price = total_price %s ?, updated_at = NOW() WHERE id = ?", sign)
+		_, err := db.Exec(query, diff, cartID)
 		return err
 	}
 	return nil
@@ -2513,7 +2723,6 @@ func getOneOrderItem(db *sql.DB, orderID int) (*OrderItemModel, error) {
 func GetMyOrders(c *gin.Context, db *sql.DB) {
 	userID := c.GetInt("user_id")
 
-	// Ambil order berdasarkan user id
 	rows, err := db.Query(`
 		SELECT id, user_id, status, total_price, created_at, updated_at
 		FROM orders
@@ -2530,34 +2739,37 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 
 	for rows.Next() {
 		var order OrderModel
-		err := rows.Scan(
-			&order.ID,
-			&order.UserID,
-			&order.Status,
-			&order.TotalPrice,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-		)
-		if err != nil {
+		if err := rows.Scan(
+			&order.ID, &order.UserID, &order.Status,
+			&order.TotalPrice, &order.CreatedAt, &order.UpdatedAt,
+		); err != nil {
 			continue
 		}
 
-		// Ambil satu sample item
 		item, err := getOneOrderItem(db, order.ID)
 		if err != nil || item == nil {
 			continue
 		}
 
-		// Ambil detail produk dan varian
-		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
+		product, err := getSingleProductWithVariantsAndImages(db, item.ProductID)
 		if err != nil {
 			continue
 		}
 
-		// Ambil thumbnail
-		_, thumbnails, err := getProductImages(db, item.ProductID)
-		if err != nil || len(thumbnails) == 0 {
-			thumbnails = []string{"https://via.placeholder.com/150"}
+		// Temukan varian yang sesuai jika ada
+		var selectedVariant *Variant
+		if item.ProductVariantID != nil {
+			for _, v := range product.Variants {
+				if v.ID == *item.ProductVariantID {
+					selectedVariant = &v
+					break
+				}
+			}
+		}
+
+		thumbnail := "https://via.placeholder.com/150"
+		if len(product.Thumbnails) > 0 {
+			thumbnail = product.Thumbnails[0]
 		}
 
 		result := gin.H{
@@ -2573,13 +2785,12 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 				"order_item_id":     item.ID,
 				"product_id":        item.ProductID,
 				"product_name":      product.Name,
-				"variant":           variant,
+				"variant":           selectedVariant,
 				"quantity":          item.Quantity,
 				"price_at_purchase": item.PriceAtPurchase,
-				"thumbnail":         thumbnails[0],
+				"thumbnail":         thumbnail,
 			},
 		}
-
 		results = append(results, result)
 	}
 
@@ -2598,7 +2809,6 @@ func GetMyOrders(c *gin.Context, db *sql.DB) {
 }
 
 func GetAllOrders(c *gin.Context, db *sql.DB) {
-	// Ambil semua order
 	rows, err := db.Query(`
 		SELECT id, user_id, status, total_price, created_at, updated_at
 		FROM orders
@@ -2614,34 +2824,41 @@ func GetAllOrders(c *gin.Context, db *sql.DB) {
 
 	for rows.Next() {
 		var order OrderModel
-		err := rows.Scan(
+		if err := rows.Scan(
 			&order.ID,
 			&order.UserID,
 			&order.Status,
 			&order.TotalPrice,
 			&order.CreatedAt,
 			&order.UpdatedAt,
-		)
-		if err != nil {
+		); err != nil {
 			continue
 		}
 
-		// Ambil satu sample item
 		item, err := getOneOrderItem(db, order.ID)
 		if err != nil || item == nil {
 			continue
 		}
 
-		// Ambil detail produk dan varian
-		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
+		product, err := getSingleProductWithVariantsAndImages(db, item.ProductID)
 		if err != nil {
 			continue
 		}
 
-		// Ambil thumbnail
-		_, thumbnails, err := getProductImages(db, item.ProductID)
-		if err != nil || len(thumbnails) == 0 {
-			thumbnails = []string{"https://via.placeholder.com/150"}
+		// Cari variant (jika ada)
+		var selectedVariant *Variant
+		if item.ProductVariantID != nil {
+			for _, v := range product.Variants {
+				if v.ID == *item.ProductVariantID {
+					selectedVariant = &v
+					break
+				}
+			}
+		}
+
+		thumbnail := "https://via.placeholder.com/150"
+		if len(product.Thumbnails) > 0 {
+			thumbnail = product.Thumbnails[0]
 		}
 
 		result := gin.H{
@@ -2657,10 +2874,10 @@ func GetAllOrders(c *gin.Context, db *sql.DB) {
 				"order_item_id":     item.ID,
 				"product_id":        item.ProductID,
 				"product_name":      product.Name,
-				"variant":           variant,
+				"variant":           selectedVariant,
 				"quantity":          item.Quantity,
 				"price_at_purchase": item.PriceAtPurchase,
-				"thumbnail":         thumbnails[0],
+				"thumbnail":         thumbnail,
 			},
 		}
 
@@ -2681,6 +2898,7 @@ func GetAllOrders(c *gin.Context, db *sql.DB) {
 	})
 }
 
+
 func GetOrderByID(c *gin.Context, db *sql.DB) {
 	orderIDStr := c.Param("id")
 	orderID, err := strconv.Atoi(orderIDStr)
@@ -2689,7 +2907,6 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Get order items
 	orderItems, err := getOrderItems(db, orderID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data cart"})
@@ -2704,42 +2921,50 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// 3. Process each item
 	var (
 		responseItems   []OrderBasicModel
 		totalOrderPrice int
 	)
 
 	for _, item := range orderItems {
-		// 3a. Get current product data
-		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
+		product, err := getSingleProductWithVariantsAndImages(db, item.ProductID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memeriksa produk"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memuat detail produk"})
 			return
 		}
 
-		// 3b. Get product images
-		_, thumbnails, err := getProductImages(db, item.ProductID)
-		if err != nil || len(thumbnails) == 0 {
-			thumbnails = []string{"https://via.placeholder.com/150"}
+		// Cari varian jika ada
+		var selectedVariant *Variant
+		if item.ProductVariantID != nil {
+			for _, v := range product.Variants {
+				if v.ID == *item.ProductVariantID {
+					selectedVariant = &v
+					break
+				}
+			}
 		}
 
-		// 3e. Build response
+		// Default placeholder
+		thumbnail := "https://via.placeholder.com/150"
+		if len(product.Thumbnails) > 0 {
+			thumbnail = product.Thumbnails[0]
+		}
+
 		responseItem := OrderBasicModel{
 			ID:               item.ID,
 			OrderID:          item.OrderID,
 			ProductID:        item.ProductID,
 			ProductVariantID: item.ProductVariantID,
 			Name:             product.Name,
-			Thumbnails:       []string{thumbnails[0]}, // Only first thumbnail
+			Thumbnails:       []string{thumbnail},
 			Quantity:         item.Quantity,
-			Price:            getBasePrice(product, variant),
+			Price:            getBasePrice(product, selectedVariant),
 			PriceAtPurchase:  item.PriceAtPurchase,
 			TotalPrice:       item.TotalPrice,
 		}
 
-		if variant != nil {
-			responseItem.Variants = []Variant{*variant}
+		if selectedVariant != nil {
+			responseItem.Variants = []Variant{*selectedVariant}
 		}
 
 		responseItems = append(responseItems, responseItem)
@@ -2752,6 +2977,7 @@ func GetOrderByID(c *gin.Context, db *sql.DB) {
 		"total_order_price": totalOrderPrice,
 	})
 }
+
 
 func getOrderItems(db *sql.DB, orderID int) ([]OrderItemModel, error) {
 	rows, err := db.Query(`
@@ -2790,7 +3016,7 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status tidak valid"})
 		return
 	}
-	// Ambil semua order by status
+
 	rows, err := db.Query(`
 		SELECT id, user_id, status, total_price, created_at, updated_at
 		FROM orders
@@ -2819,22 +3045,30 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 			continue
 		}
 
-		// Ambil satu sample item
 		item, err := getOneOrderItem(db, order.ID)
 		if err != nil || item == nil {
 			continue
 		}
 
-		// Ambil detail produk dan varian
-		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
+		product, err := getSingleProductWithVariantsAndImages(db, item.ProductID)
 		if err != nil {
 			continue
 		}
 
-		// Ambil thumbnail
-		_, thumbnails, err := getProductImages(db, item.ProductID)
-		if err != nil || len(thumbnails) == 0 {
-			thumbnails = []string{"https://via.placeholder.com/150"}
+		// Cari varian jika ada
+		var selectedVariant *Variant
+		if item.ProductVariantID != nil {
+			for _, v := range product.Variants {
+				if v.ID == *item.ProductVariantID {
+					selectedVariant = &v
+					break
+				}
+			}
+		}
+
+		thumbnail := "https://via.placeholder.com/150"
+		if len(product.Thumbnails) > 0 {
+			thumbnail = product.Thumbnails[0]
 		}
 
 		result := gin.H{
@@ -2850,10 +3084,10 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 				"order_item_id":     item.ID,
 				"product_id":        item.ProductID,
 				"product_name":      product.Name,
-				"variant":           variant,
+				"variant":           selectedVariant,
 				"quantity":          item.Quantity,
 				"price_at_purchase": item.PriceAtPurchase,
-				"thumbnail":         thumbnails[0],
+				"thumbnail":         thumbnail,
 			},
 		}
 
@@ -2873,6 +3107,7 @@ func GetOrdersByStatus(c *gin.Context, db *sql.DB) {
 		"data":    results,
 	})
 }
+
 
 // ++++++++++++++++++++++++
 //
