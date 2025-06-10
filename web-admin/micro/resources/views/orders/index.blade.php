@@ -9,7 +9,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Semua Pesanan</h2>
       </div>
-      <p class="text-muted">Klik pada kepala tabel untuk mengurutkan berdasarkan kolom. Klik pada pesanan untuk melihat detailnya.</p>
+      <p class="text-muted small">Klik pada kepala tabel untuk mengurutkan berdasarkan kolom. Klik pada pesanan untuk melihat detailnya.</p>
 
     <div class="table-responsive">
         <table class="table table-bordered table-hover" id="orderTable">

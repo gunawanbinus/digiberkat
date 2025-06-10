@@ -14,9 +14,9 @@
                 <div class="collapse" id="collapseProduk" data-bs-parent="#sidenavAccordion">
                     <nav class="sb-sidenav-menu-nested nav">
                         <a class="nav-link" href="{{ route('products.index') }}">Semua</a>
-                        <a class="nav-link" href="#">Berdasarkan Kategori</a>
+                        <a class="nav-link" href="{{ route('categories.index') }}">Berdasarkan Kategori</a>
                         <a class="nav-link" href="#">Stok Rendah dan Habis</a>
-                        <a class="nav-link" href="{{ route('products.index') }}">Tambahkan Produk Baru</a>
+                        <a class="nav-link" href="{{ route('products.create') }}">Tambahkan Produk Baru</a>
                     </nav>
                 </div>
                 <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseKategori" aria-expanded="false">
@@ -26,8 +26,8 @@
                 </a>
                 <div class="collapse" id="collapseKategori" data-bs-parent="#sidenavAccordion">
                     <nav class="sb-sidenav-menu-nested nav">
-                        <a class="nav-link" href="{{ route('products.index') }}">Semua</a>
-                        <a class="nav-link" href="{{ route('products.index') }}">Tambahkan Kategori Baru</a>
+                        <a class="nav-link" href="{{ route('categories.index') }}">Semua</a>
+                        <a class="nav-link" href="{{ route('categories.index') }}">Tambahkan Kategori Baru</a>
                     </nav>
                 </div>
                 <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePesanan" aria-expanded="false">
@@ -37,8 +37,8 @@
                 </a>
                 <div class="collapse" id="collapsePesanan" data-bs-parent="#sidenavAccordion">
                     <nav class="sb-sidenav-menu-nested nav">
-                        <a class="nav-link" href="#">Semua</a>
-                        <a class="nav-link" href="#">Belum Diproses</a>
+                        <a class="nav-link" href="{{ route('orders.index') }}">Semua</a>
+                        <a class="nav-link" href="{{ route('orders.index') }}">Belum Diproses</a>
                     </nav>
                 </div>
                 <a class="nav-link" href="#">

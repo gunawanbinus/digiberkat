@@ -10,7 +10,7 @@
         <h2>Semua Produk</h2>
         <a href="{{ route('products.create') }}" class="btn btn-primary">Tambah Produk</a>
       </div>
-      <p class="text-muted">Klik pada kepala tabel untuk mengurutkan berdasarkan kolom. Klik pada produk untuk mengedit.</p>
+      <p class="text-muted small">Klik pada kepala tabel untuk mengurutkan berdasarkan kolom. Klik pada produk untuk mengedit.</p>
 
     <div class="table-responsive">
         <table class="table table-bordered table-hover" id="productTable">

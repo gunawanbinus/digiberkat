@@ -5,6 +5,7 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CategoryController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 
@@ -29,9 +30,17 @@ Route::get('/products', [ProductController::class, 'index'], function () {
     }
 })->name('products.index');
 
+Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+
+Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+
+Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
 
 Route::get('/orders/all', [OrderController::class, 'index'], function () {
     $token = session('token');
@@ -41,6 +50,7 @@ Route::get('/orders/all', [OrderController::class, 'index'], function () {
 })->name('orders.index');
 
 Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+
 Route::post('/orders/{id}/finish', function ($id) {
     $token = session('token');
 

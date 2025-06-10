@@ -36,7 +36,7 @@ func main() {
 	// // // Setup Routes langsung dari fungsi yang sudah dibuat
 	AuthRoutes(r, db)
 	ProductRoutes(r, db)
-	// CategoryRoutes(r, db)
+	CategoryRoutes(r, db)
 	// ProductImageRoutes(r, db)
 	RestockRequestRoutes(r, db)
 	// NotificationRoutes(r, db)
