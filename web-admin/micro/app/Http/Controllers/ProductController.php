@@ -21,6 +21,19 @@ class ProductController extends Controller
         return view('products.index', compact('products'));
     }
 
+    public function show($id)
+    {
+        $response = Http::get(env('GOLANG_API_URL') . "products/id/$id");
+
+        if ($response->failed()) {
+            abort(404, 'Produk tidak ditemukan');
+        }
+
+        $data = $response->json('data');
+
+        return view('products.show', compact('data'));
+    }
+
     public function store(Request $request)
     {
         $request->validate([

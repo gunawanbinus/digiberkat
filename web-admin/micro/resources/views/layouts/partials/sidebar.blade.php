@@ -41,7 +41,7 @@
                         <a class="nav-link" href="{{ route('orders.index') }}">Belum Diproses</a>
                     </nav>
                 </div>
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="{{ route('restock.requests') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-table"></i></div>
                     Permintaan Restok
                 </a>

@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\RestockRequestController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 
@@ -29,6 +30,8 @@ Route::get('/products', [ProductController::class, 'index'], function () {
         return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
     }
 })->name('products.index');
+
+Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
 
 Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
 
@@ -62,6 +65,40 @@ Route::post('/orders/{id}/finish', function ($id) {
 
     return back()->with('error', 'Gagal menyelesaikan pesanan');
 })->name('orders.finish');
+
+Route::get('/restock-requests', function () {
+    $token = session('token');
+    if (!$token) {
+        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
+    }
+
+    $baseUrl = rtrim(env('GOLANG_API_URL'), '/');
+    $headers = [
+        'Authorization' => 'Bearer ' . $token,
+        'Accept' => 'application/json'
+    ];
+
+    try {
+        $restockRequests = Http::withHeaders($headers)->get("{$baseUrl}/restock-requests")->json('data') ?? [];
+        usort($restockRequests, fn($a, $b) => $a['product_id'] <=> $b['product_id']);
+    } catch (\Exception $e) {
+        return view('admin.restock-requests')->withErrors(['API error: ' . $e->getMessage()]);
+    }
+
+    return view('admin.restock-requests', compact('restockRequests'));
+})->name('restock.requests');
+
+Route::post('/restock-requests/{id}/read', function ($id) {
+    $token = session('token');
+
+    $response = Http::withToken($token)->put(env('GOLANG_API_URL') . "restock-requests/{$id}/read");
+
+    if ($response->successful()) {
+        return redirect()->route('restock.requests')->with('success', 'Berhasil.');
+    }
+
+    return back()->with('error', 'Gagal');
+})->name('requests.read');
 
 Route::get('/login', [LoginController::class, 'index'])->name('login');
 Route::post('/login', function (Request $request) {
@@ -148,7 +185,7 @@ Route::get('/admin/dashboard', function () {
         usort($lowStocks, fn($a, $b) => $a['stock'] <=> $b['stock']);
 
         $restockRequests = Http::withHeaders($headers)->get("{$baseUrl}/restock-requests")->json('data') ?? [];
-        usort($restockRequests, fn($a, $b) => $a['product_id'] <=> $b['product_id']);
+        usort($restockRequests, fn($a, $b) => $a['id'] <=> $b['id']);
 
     } catch (\Exception $e) {
         return view('admin.dashboard')->withErrors(['API error: ' . $e->getMessage()]);

@@ -3545,7 +3545,7 @@ func RestockRequestRoutes(r *gin.Engine, db *sql.DB) {
 	adminRestock := r.Group("/api/v1/restock-requests")
 	adminRestock.Use(AuthMiddleware(), RoleMiddleware("admin"))
 	{
-		addRoute(adminRestock, "PATCH", "/:id", []string{"admin"}, UpdateRestockRequestStatus, db)
+		addRoute(adminRestock, "PUT", "/:id/read", []string{"admin"}, UpdateRestockRequestStatus, db)
 		addRoute(adminRestock, "DELETE", "/:id", []string{"admin"}, DeleteRestockRequest, db)
 	}
 }
@@ -3555,55 +3555,10 @@ func RestockRequestRoutes(r *gin.Engine, db *sql.DB) {
 //	RestockRequest READ
 //
 // ++++++++++++++++++++++++
-// func GetAllRestockRequests(c *gin.Context, db *sql.DB) {
-// 	status := c.Query("status")
-// 	productID := c.Query("product_id")
-//
-// 	// Menyusun query dasar untuk mengambil permintaan restock
-// 	query := `SELECT id, user_id, product_id, product_variant_id, message, status, created_at FROM restock_requests WHERE 1=1`
-// 	args := []interface{}{}
-//
-// 	// Menambahkan filter jika status diberikan
-// 	if status != "" {
-// 		query += ` AND status = ?`
-// 		args = append(args, status)
-// 	}
-//
-// 	// Menambahkan filter jika product_id diberikan
-// 	if productID != "" {
-// 		query += ` AND product_id = ?`
-// 		args = append(args, productID)
-// 	}
-//
-// 	// Menjalankan query
-// 	rows, err := db.Query(query, args...)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data permintaan restock"})
-// 		return
-// 	}
-// 	defer rows.Close()
-//
-// 	// Mengambil data dari query
-// 	var requests []RestockRequestModel
-// 	for rows.Next() {
-// 		var r RestockRequestModel
-// 		if err := rows.Scan(&r.ID, &r.UserID, &r.ProductID, &r.ProductVariantID, &r.Message, &r.Status, &r.CreatedAt); err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal membaca data"})
-// 			return
-// 		}
-// 		requests = append(requests, r)
-// 	}
-//
-// 	// Menyusun response
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"message": "✅ Semua permintaan restock berhasil diambil",
-// 		"data":    requests,
-// 	})
-// }
-
 func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
 	rows, err := db.Query(`
 		SELECT
+			rr.id AS request_id,
 			p.id AS product_id,
 			p.name AS product_name,
 			COALESCE(pi.thumbnail_url, '') AS thumbnail,
@@ -3625,6 +3580,7 @@ func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
 	defer rows.Close()
 
 	type RestockDisplay struct {
+		RequestID   int    `json:"id"`
 		ProductID   int    `json:"product_id"`
 		ProductName string `json:"product_name"`
 		Thumbnail   string `json:"thumbnail"`
@@ -3636,7 +3592,7 @@ func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
 	var results []RestockDisplay
 	for rows.Next() {
 		var r RestockDisplay
-		if err := rows.Scan(&r.ProductID, &r.ProductName, &r.Thumbnail, &r.VariantID, &r.VariantName, &r.Stock); err != nil {
+		if err := rows.Scan(&r.RequestID, &r.ProductID, &r.ProductName, &r.Thumbnail, &r.VariantID, &r.VariantName, &r.Stock); err != nil {
 			continue
 		}
 		results = append(results, r)
@@ -3727,30 +3683,13 @@ func UpdateRestockRequestStatus(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	var input struct {
-		Status string `json:"status"`
-	}
-
-	// Validasi format input JSON
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Format data tidak valid"})
-		return
-	}
-
-	// Cek apakah status valid
-	validStatuses := map[string]bool{"unread": true, "read": true, "done": true}
-	if !validStatuses[input.Status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Status tidak valid permitted (unread, read, done)"})
-		return
-	}
-
 	// Cek apakah id valid dalam tabel restock_requests
 	if !ValidateRecordExistence(c, db, "restock_requests", idInt) {
 		return
 	}
 
 	// Update status permintaan restock
-	result, err := db.Exec(`UPDATE restock_requests SET status = ? WHERE id = ?`, input.Status, idInt)
+	result, err := db.Exec(`UPDATE restock_requests SET status = "read" WHERE id = ?`, idInt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengupdate status"})
 		return
@@ -3768,7 +3707,6 @@ func UpdateRestockRequestStatus(c *gin.Context, db *sql.DB) {
 		"message": "✅ Status permintaan restock diperbarui",
 		"data": gin.H{
 			"id":     idInt,
-			"status": input.Status,
 		},
 	})
 }
@@ -4079,8 +4017,8 @@ func GetLowStocks(c *gin.Context, db *sql.DB) {
 		ProductID   int    `json:"product_id"`
 		ProductName string `json:"product_name"`
 		Thumbnail   string `json:"thumbnail"`
-		VariantID   int    `json:"variant_id"`
-		VariantName string `json:"variant_name"`
+		VariantID   *int    `json:"variant_id"`
+		VariantName *string `json:"variant_name"`
 		Stock       int    `json:"stock"`
 	}
 

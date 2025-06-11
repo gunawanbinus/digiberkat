@@ -55,7 +55,7 @@
 
         <div class="form-group">
             <label for="images">Gambar Produk</label>
-            <input type="file" name="images[]" class="form-control" multiple required>
+            <input type="file" name="images[]" class="form-control" multiple>
         </div>
 
         <button type="submit" class="btn btn-primary">Simpan Produk</button>
