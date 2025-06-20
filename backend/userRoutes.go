@@ -1763,6 +1763,11 @@ func CartItemRoutes(r *gin.Engine, db *sql.DB) {
 			UpdateCartItemQuantity(c, db)
 		})
 
+		//Update cart item product variant (jika dibutuhkan nanti)
+		customerCartItem.PATCH("/:id/variant", func(c *gin.Context) {
+			UpdateVariantCartItem(c, db)
+		})
+
 		// Delete cart item
 		customerCartItem.DELETE("/:id", func(c *gin.Context) {
 			DeleteCartItem(c, db)

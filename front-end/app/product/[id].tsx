@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useGetProductByIdQuery } from '@/src/store/api/productsApi';
+import { useAddToCartMutation } from '@/src/store/api/cartApi'; // Import the new mutation hook
 
 import { Card } from '@/components/ui/card';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -10,15 +11,26 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { Box } from '@/components/ui/box';
 import { Heading } from '@/components/ui/heading';
+import { useToast, Toast, ToastTitle } from '@/components/ui/toast'; // Import Toast components
+import { Icon } from '@/components/ui/icon';
+import { CheckCircle } from 'lucide-react-native'; // Using CheckCircle for success icon
+
+interface AddToCartPayload {
+  product_id: number;
+  quantity: number;
+  product_variant_id?: number;
+}
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: product, isLoading, isError } = useGetProductByIdQuery(Number(id));
+  const [addToCart, { isLoading: isAddingToCart }] = useAddToCartMutation(); // Initialize the mutation hook
+  const toast = useToast(); // Initialize toast hook
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState(
-    product?.is_varians && product.variants && product.variants.length > 0 
-      ? product.variants[0] 
+    product?.is_varians && product.variants && product.variants.length > 0
+      ? product.variants[0]
       : null
   );
   const [quantity, setQuantity] = useState(1);
@@ -29,13 +41,13 @@ export default function ProductDetailsScreen() {
       // Update max stock based on selected variant or product stock
       const stock = selectedVariant?.stock ?? product.stock ?? 1;
       setMaxStock(stock);
-      
+
       // Adjust quantity if it exceeds the new max stock
       if (quantity > stock) {
         setQuantity(stock > 0 ? stock : 1);
       }
     }
-  }, [product, selectedVariant]);
+  }, [product, selectedVariant, quantity]); // Added quantity to dependency array
 
   const handleIncrement = () => {
     if (quantity < maxStock) {
@@ -49,11 +61,53 @@ export default function ProductDetailsScreen() {
     }
   };
 
-  const handleAddToCart = () => {
-    // Here you would typically dispatch an action to add to cart
-    console.log(`Added ${quantity} items to cart`);
-    // Reset quantity after adding to cart (optional)
-    // setQuantity(1);
+  const handleAddToCart = async () => {
+    if (!product) return;
+
+    const payload: AddToCartPayload = {
+      product_id: product.id,
+      quantity: quantity,
+    };
+
+    if (selectedVariant) {
+      payload.product_variant_id = selectedVariant.id;
+    }
+
+    try {
+      await addToCart(payload).unwrap(); // Call the mutation and unwrap to handle success/error
+      toast.show({
+        placement: 'top',
+        render: ({ id: toastId }) => (
+          <Toast
+            nativeID={`toast-${toastId}`}
+            className="px-5 py-3 gap-4 shadow-soft-1 items-center flex-row bg-green-500" // Green background for success
+          >
+            <Icon as={CheckCircle} size="xl" className="fill-white stroke-none" />
+            <ToastTitle size="sm" className="text-white">
+              Produk berhasil ditambahkan ke keranjang!
+            </ToastTitle>
+          </Toast>
+        ),
+      });
+      // Optionally reset quantity or navigate
+      // setQuantity(1);
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      toast.show({
+        placement: 'top',
+        render: ({ id: toastId }) => (
+          <Toast
+            nativeID={`toast-${toastId}`}
+            className="px-5 py-3 gap-4 shadow-soft-1 items-center flex-row bg-red-500" // Red background for error
+          >
+            <Icon as={CheckCircle} size="xl" className="fill-white stroke-none" /> {/* You might want a different icon for error */}
+            <ToastTitle size="sm" className="text-white">
+              Gagal menambahkan produk ke keranjang.
+            </ToastTitle>
+          </Toast>
+        ),
+      });
+    }
   };
 
   if (isLoading) {
@@ -88,8 +142,8 @@ export default function ProductDetailsScreen() {
     ? Math.round(((displayPrice - displayDiscountPrice) / displayPrice) * 100)
     : 0;
 
-  const imagesArray = Array.isArray(product.images) 
-    ? product.images 
+  const imagesArray = Array.isArray(product.images)
+    ? product.images
     : [product.images || 'https://via.placeholder.com/150'];
   const currentImage = imagesArray[currentImageIndex];
 
@@ -192,7 +246,7 @@ export default function ProductDetailsScreen() {
           </View>
 
           <Text className="text-sm text-gray-700 mb-6">{product.description}</Text>
-          
+
           <Box className="flex-col sm:flex-row items-center mb-4">
             <View className="flex-row items-center border border-gray-300 rounded-md mb-3 sm:mb-0 sm:mr-3">
               <TouchableOpacity
@@ -217,13 +271,19 @@ export default function ProductDetailsScreen() {
           </Box>
 
           <Box className="flex-col sm:flex-row">
-            <Button 
+            <Button
               className="px-4 py-2 mr-0 mb-3 sm:mr-3 sm:mb-0 sm:flex-1"
               onPress={handleAddToCart}
-              disabled={maxStock <= 0}
+              disabled={maxStock <= 0 || isAddingToCart} // Disable button while adding to cart
             >
               <ButtonText size="sm">
-                {maxStock <= 0 ? 'Stok Habis' : `Add to cart (${quantity})`}
+                {isAddingToCart ? (
+                  <ActivityIndicator color="#fff" />
+                ) : maxStock <= 0 ? (
+                  'Stok Habis'
+                ) : (
+                  `Add to cart (${quantity})`
+                )}
               </ButtonText>
             </Button>
             <Button variant="outline" className="px-4 py-2 border-outline-300 sm:flex-1">
@@ -232,16 +292,6 @@ export default function ProductDetailsScreen() {
               </ButtonText>
             </Button>
           </Box>
-          {/* <Box className="flex-col sm:flex-row">
-            <Button className="px-4 py-2 mr-0 mb-3 sm:mr-3 sm:mb-0 sm:flex-1">
-              <ButtonText size="sm">Add to cart</ButtonText>
-            </Button>
-            <Button variant="outline" className="px-4 py-2 border-outline-300 sm:flex-1">
-              <ButtonText size="sm" className="text-typography-600">
-                Wishlist
-              </ButtonText>
-            </Button>
-          </Box> */}
         </Card>
       </Box>
     </ScrollView>
