@@ -622,87 +622,151 @@ func ProductRoutes(r *gin.Engine, db *sql.DB) {
 }
 
 func GetAllProducts(c *gin.Context, db *sql.DB) {
-	// Cek apakah request berdasarkan ID produk
 	productID := c.Param("id_product")
 	categoryID := c.Param("category_id")
 
-	var products []ProductsBasicModel
 	var err error
 
 	if productID != "" {
-		// Validasi productID adalah angka
 		id, err := strconv.Atoi(productID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "ID produk harus berupa angka"})
 			return
 		}
 
-		// Ambil produk berdasarkan ID
-		products, err = getProductByID(db, id)
+		product, err := getSingleProductWithVariantsAndImages(db, id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
-			return
-		}
-
-		if len(products) == 0 {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan"})
-			return
-		}
-	} else {
-		// Ambil produk berdasarkan kategori atau semua produk
-		products, err = getBasicProducts(db, categoryID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
-			return
-		}
-	}
-
-	// 2. Ambil gambar & varian untuk setiap produk
-	for i := range products {
-		// Ambil gambar
-		images, thumbnails, err := getProductImages(db, products[i].ID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil gambar produk"})
-			return
-		}
-		products[i].Images = images
-		products[i].Thumbnails = thumbnails
-
-		// Ambil varian (jika produk punya varian)
-		if products[i].IsVarians {
-			variants, err := getProductVariants(db, products[i].ID)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil varian produk"})
-				return
+			if err == sql.ErrNoRows {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
 			}
-			products[i].Variants = variants
-			products[i].Price = nil // Harga utama di-nullkan jika ada varian
-			products[i].DiscountPrice = nil
-			products[i].Stock = nil
+			return
 		}
+
+		// ➕ Hitung nilai tambahan
+		// enrichProductWithComputedFields(&product)
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "✅ Produk berhasil diambil",
+			"data":    product,
+		})
+		return
 	}
 
-	// Buat response message berdasarkan filter
+	basicProducts, err := getBasicProducts(db, categoryID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
+		return
+	}
+
+	var fullProducts []ProductsBasicModel
+	for _, p := range basicProducts {
+		detail, err := getSingleProductWithVariantsAndImages(db, p.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("❌ Gagal mengambil detail produk ID %d", p.ID)})
+			return
+		}
+
+		// enrichProductWithComputedFields(&detail)
+
+		fullProducts = append(fullProducts, detail)
+	}
+
 	message := "✅ Semua produk berhasil diambil"
 	if categoryID != "" {
 		message = fmt.Sprintf("✅ Produk dengan kategori ID %s berhasil diambil", categoryID)
-	} else if productID != "" {
-		message = "✅ Produk berhasil diambil"
 	}
 
-	// Jika mengambil berdasarkan ID, kembalikan objek produk tunggal
-	if productID != "" {
-		c.JSON(http.StatusOK, gin.H{
-			"message": message,
-			"data":    products[0],
-		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"message": message,
-			"data":    products,
-		})
-	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": message,
+		"data":    fullProducts,
+	})
 }
+
+
+// func GetAllProducts(c *gin.Context, db *sql.DB) {
+// 	// Cek apakah request berdasarkan ID produk
+// 	productID := c.Param("id_product")
+// 	categoryID := c.Param("category_id")
+
+// 	var products []ProductsBasicModel
+// 	var err error
+
+// 	if productID != "" {
+// 		// Validasi productID adalah angka
+// 		id, err := strconv.Atoi(productID)
+// 		if err != nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "ID produk harus berupa angka"})
+// 			return
+// 		}
+
+// 		// Ambil produk berdasarkan ID
+// 		products, err = getProductByID(db, id)
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
+// 			return
+// 		}
+
+// 		if len(products) == 0 {
+// 			c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan"})
+// 			return
+// 		}
+// 	} else {
+// 		// Ambil produk berdasarkan kategori atau semua produk
+// 		products, err = getBasicProducts(db, categoryID)
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data produk"})
+// 			return
+// 		}
+// 	}
+
+// 	// 2. Ambil gambar & varian untuk setiap produk
+// 	for i := range products {
+// 		// Ambil gambar
+// 		images, thumbnails, err := getProductImages(db, products[i].ID)
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil gambar produk"})
+// 			return
+// 		}
+// 		products[i].Images = images
+// 		products[i].Thumbnails = thumbnails
+
+// 		// Ambil varian (jika produk punya varian)
+// 		if products[i].IsVarians {
+// 			variants, err := getProductVariants(db, products[i].ID)
+// 			if err != nil {
+// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil varian produk"})
+// 				return
+// 			}
+// 			products[i].Variants = variants
+// 			products[i].Price = nil // Harga utama di-nullkan jika ada varian
+// 			products[i].DiscountPrice = nil
+// 			products[i].Stock = nil
+// 		}
+// 	}
+
+// 	// Buat response message berdasarkan filter
+// 	message := "✅ Semua produk berhasil diambil"
+// 	if categoryID != "" {
+// 		message = fmt.Sprintf("✅ Produk dengan kategori ID %s berhasil diambil", categoryID)
+// 	} else if productID != "" {
+// 		message = "✅ Produk berhasil diambil"
+// 	}
+
+// 	// Jika mengambil berdasarkan ID, kembalikan objek produk tunggal
+// 	if productID != "" {
+// 		c.JSON(http.StatusOK, gin.H{
+// 			"message": message,
+// 			"data":    products[0],
+// 		})
+// 	} else {
+// 		c.JSON(http.StatusOK, gin.H{
+// 			"message": message,
+// 			"data":    products,
+// 		})
+// 	}
+// }
 
 // Fungsi baru untuk mengambil produk berdasarkan ID
 func getProductByID(db *sql.DB, productID int) ([]ProductsBasicModel, error) {
@@ -818,7 +882,7 @@ func getProductImages(db *sql.DB, productID int) ([]string, []string, error) {
 // Fungsi pembantu untuk mengambil varian produk
 func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
 	rows, err := db.Query(`
-        SELECT id, name, price, is_discounted, discount_price, stock
+        SELECT id, name, price, discount_price, stock
         FROM product_variants
         WHERE product_id = ?`, productID)
 	if err != nil {
@@ -829,25 +893,49 @@ func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
 	var variants []Variant
 	for rows.Next() {
 		var v Variant
-		var isDiscounted bool
-		err := rows.Scan(
-			&v.ID,
-			&v.Name,
-			&v.Price,
-			&isDiscounted,
-			&v.DiscountPrice,
-			&v.Stock,
-		)
+		err := rows.Scan(&v.ID, &v.Name, &v.Price, &v.DiscountPrice, &v.Stock)
 		if err != nil {
 			return nil, err
 		}
-		if !isDiscounted {
-			v.DiscountPrice = nil // Pastikan discount_price null jika tidak diskon
-		}
+
+		v.IsDiscounted = v.DiscountPrice != nil && *v.DiscountPrice < v.Price
 		variants = append(variants, v)
 	}
 	return variants, nil
 }
+
+// func getProductVariants(db *sql.DB, productID int) ([]Variant, error) {
+// 	rows, err := db.Query(`
+//         SELECT id, name, price, is_discounted, discount_price, stock
+//         FROM product_variants
+//         WHERE product_id = ?`, productID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer rows.Close()
+
+// 	var variants []Variant
+// 	for rows.Next() {
+// 		var v Variant
+// 		var isDiscounted bool
+// 		err := rows.Scan(
+// 			&v.ID,
+// 			&v.Name,
+// 			&v.Price,
+// 			&isDiscounted,
+// 			&v.DiscountPrice,
+// 			&v.Stock,
+// 		)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		if !isDiscounted {
+// 			v.DiscountPrice = nil // Pastikan discount_price null jika tidak diskon
+// 		}
+// 		variants = append(variants, v)
+// 	}
+// 	return variants, nil
+// }
 
 func SearchProducts(c *gin.Context, db *sql.DB) {
 	queryStr := c.Query("q")
@@ -1788,12 +1876,13 @@ func CartItemRoutes(r *gin.Engine, db *sql.DB) {
 // +++++++++++++++++++++++++++++++++
 // Cart Item CREATE MY CART
 // +++++++++++++++++++++++++++++++++
+
 func CreateCartItem(c *gin.Context, db *sql.DB) {
-	userID := GetUserID(c) // Sama dengan cart_id
+	userID := GetUserID(c)
 
 	var input struct {
 		ProductID        int  `json:"product_id"`
-		ProductVariantID *int `json:"product_variant_id"` // opsional
+		ProductVariantID *int `json:"product_variant_id"`
 		Quantity         int  `json:"quantity"`
 	}
 
@@ -1806,16 +1895,23 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Validasi keberadaan product dan cart
+	tx, err := db.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memulai transaksi"})
+		return
+	}
+	defer tx.Rollback()
+
+	// Validasi record
 	if !ValidateRecordExistence(c, db, "products", input.ProductID) || !ValidateRecordExistence(c, db, "carts", userID) {
 		return
 	}
 
-	// Ambil info produk
 	var isVarians bool
 	var isDiscounted *bool
 	var price, stock, discountPrice *int
-	err := db.QueryRow(`
+
+	err = tx.QueryRow(`
 		SELECT is_varians, price, stock, is_discounted, discount_price
 		FROM products WHERE id = ?
 	`, input.ProductID).Scan(&isVarians, &price, &stock, &isDiscounted, &discountPrice)
@@ -1832,11 +1928,10 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk ini memiliki variasi. Harap isi product_variant_id"})
 			return
 		}
-		// Ambil data variant
 		var isVarDisc bool
 		var varPrice int
 		var varDiscPrice *int
-		err := db.QueryRow(`
+		err := tx.QueryRow(`
 			SELECT stock, price, is_discounted, discount_price
 			FROM product_variants
 			WHERE id = ? AND product_id = ?
@@ -1868,36 +1963,37 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 
 	totalPrice := input.Quantity * pricePerItem
 
-	// Cek apakah item dengan kombinasi yang sama sudah ada di cart
+	// Cek duplikasi
 	var existingID, existingQty, existingTotal int
-	var query string
 	var row *sql.Row
-
 	if input.ProductVariantID == nil {
-		query = `
-			SELECT id, quantity, total_price FROM cart_items
+		row = tx.QueryRow(`
+			SELECT id, quantity, total_price
+			FROM cart_items
 			WHERE cart_id = ? AND product_id = ? AND product_variant_id IS NULL
-		`
-		row = db.QueryRow(query, userID, input.ProductID)
+			FOR UPDATE
+		`, userID, input.ProductID)
 	} else {
-		query = `
-			SELECT id, quantity, total_price FROM cart_items
+		row = tx.QueryRow(`
+			SELECT id, quantity, total_price
+			FROM cart_items
 			WHERE cart_id = ? AND product_id = ? AND product_variant_id = ?
-		`
-		row = db.QueryRow(query, userID, input.ProductID, input.ProductVariantID)
+			FOR UPDATE
+		`, userID, input.ProductID, input.ProductVariantID)
 	}
 
 	err = row.Scan(&existingID, &existingQty, &existingTotal)
 	if err == nil {
-		// Item sudah ada → update quantity
+		// Duplikat ditemukan → update
 		newQty := existingQty + input.Quantity
 		if newQty > stockAvailable {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Quantity total melebihi stok tersedia"})
 			return
 		}
 		newTotal := newQty * pricePerItem
+		diff := newTotal - existingTotal
 
-		_, err = db.Exec(`
+		_, err = tx.Exec(`
 			UPDATE cart_items
 			SET quantity = ?, total_price = ?, updated_at = NOW()
 			WHERE id = ?
@@ -1907,10 +2003,17 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 			return
 		}
 
-		// Perbarui total cart (selisihnya saja)
-		diff := newTotal - existingTotal
-		if err := AddToCartTotalPrice(db, userID, diff); err != nil {
+		_, err = tx.Exec(`
+			UPDATE carts SET total_price = total_price + ?, updated_at = NOW()
+			WHERE id = ?
+		`, diff, userID)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menyimpan transaksi"})
 			return
 		}
 
@@ -1918,143 +2021,191 @@ func CreateCartItem(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Tidak ada duplikat → insert item baru
-	_, err = db.Exec(`
+	// Tidak ditemukan → insert baru
+	_, err = tx.Exec(`
 		INSERT INTO cart_items
 		(cart_id, product_id, product_variant_id, quantity, price_per_item, total_price, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
 	`, userID, input.ProductID, input.ProductVariantID, input.Quantity, pricePerItem, totalPrice)
 	if err != nil {
-		_ = SubtractFromCartTotalPrice(db, userID, totalPrice) // rollback if needed
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menambahkan item ke cart"})
 		return
 	}
 
-	// Tambahkan total ke cart
-	if err := AddToCartTotalPrice(db, userID, totalPrice); err != nil {
+	_, err = tx.Exec(`
+		UPDATE carts SET total_price = total_price + ?, updated_at = NOW()
+		WHERE id = ?
+	`, totalPrice, userID)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menyimpan transaksi"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "✅ Item berhasil ditambahkan ke cart"})
 }
 
+// func CreateCartItem(c *gin.Context, db *sql.DB) {
+// 	userID := GetUserID(c) // Sama dengan cart_id
+
+// 	var input struct {
+// 		ProductID        int  `json:"product_id"`
+// 		ProductVariantID *int `json:"product_variant_id"` // opsional
+// 		Quantity         int  `json:"quantity"`
+// 	}
+
+// 	if err := c.ShouldBindJSON(&input); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Input tidak valid"})
+// 		return
+// 	}
+// 	if input.ProductID == 0 || input.Quantity <= 0 {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ product_id dan quantity harus diisi dengan benar"})
+// 		return
+// 	}
+
+// 	// Validasi keberadaan product dan cart
+// 	if !ValidateRecordExistence(c, db, "products", input.ProductID) || !ValidateRecordExistence(c, db, "carts", userID) {
+// 		return
+// 	}
+
+// 	// Ambil info produk
+// 	var isVarians bool
+// 	var isDiscounted *bool
+// 	var price, stock, discountPrice *int
+// 	err := db.QueryRow(`
+// 		SELECT is_varians, price, stock, is_discounted, discount_price
+// 		FROM products WHERE id = ?
+// 	`, input.ProductID).Scan(&isVarians, &price, &stock, &isDiscounted, &discountPrice)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk tidak ditemukan"})
+// 		return
+// 	}
+
+// 	var pricePerItem int
+// 	var stockAvailable int
+
+// 	if isVarians {
+// 		if input.ProductVariantID == nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk ini memiliki variasi. Harap isi product_variant_id"})
+// 			return
+// 		}
+// 		// Ambil data variant
+// 		var isVarDisc bool
+// 		var varPrice int
+// 		var varDiscPrice *int
+// 		err := db.QueryRow(`
+// 			SELECT stock, price, is_discounted, discount_price
+// 			FROM product_variants
+// 			WHERE id = ? AND product_id = ?
+// 		`, *input.ProductVariantID, input.ProductID).Scan(&stockAvailable, &varPrice, &isVarDisc, &varDiscPrice)
+// 		if err != nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Variant tidak ditemukan untuk produk ini"})
+// 			return
+// 		}
+// 		pricePerItem = varPrice
+// 		if isVarDisc && varDiscPrice != nil {
+// 			pricePerItem = *varDiscPrice
+// 		}
+// 	} else {
+// 		if input.ProductVariantID != nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Produk ini tidak memiliki variasi. Hapus product_variant_id"})
+// 			return
+// 		}
+// 		stockAvailable = *stock
+// 		pricePerItem = *price
+// 		if *isDiscounted && discountPrice != nil {
+// 			pricePerItem = *discountPrice
+// 		}
+// 	}
+
+// 	if input.Quantity > stockAvailable {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Quantity melebihi stok tersedia"})
+// 		return
+// 	}
+
+// 	totalPrice := input.Quantity * pricePerItem
+
+// 	// Cek apakah item dengan kombinasi yang sama sudah ada di cart
+// 	var existingID, existingQty, existingTotal int
+// 	var query string
+// 	var row *sql.Row
+
+// 	if input.ProductVariantID == nil {
+// 		query = `
+// 			SELECT id, quantity, total_price FROM cart_items
+// 			WHERE cart_id = ? AND product_id = ? AND product_variant_id IS NULL
+// 		`
+// 		row = db.QueryRow(query, userID, input.ProductID)
+// 	} else {
+// 		query = `
+// 			SELECT id, quantity, total_price FROM cart_items
+// 			WHERE cart_id = ? AND product_id = ? AND product_variant_id = ?
+// 		`
+// 		row = db.QueryRow(query, userID, input.ProductID, input.ProductVariantID)
+// 	}
+
+// 	err = row.Scan(&existingID, &existingQty, &existingTotal)
+// 	if err == nil {
+// 		// Item sudah ada → update quantity
+// 		newQty := existingQty + input.Quantity
+// 		if newQty > stockAvailable {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Quantity total melebihi stok tersedia"})
+// 			return
+// 		}
+// 		newTotal := newQty * pricePerItem
+
+// 		_, err = db.Exec(`
+// 			UPDATE cart_items
+// 			SET quantity = ?, total_price = ?, updated_at = NOW()
+// 			WHERE id = ?
+// 		`, newQty, newTotal, existingID)
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update item cart"})
+// 			return
+// 		}
+
+// 		// Perbarui total cart (selisihnya saja)
+// 		diff := newTotal - existingTotal
+// 		if err := AddToCartTotalPrice(db, userID, diff); err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
+// 			return
+// 		}
+
+// 		c.JSON(http.StatusOK, gin.H{"message": "✅ Quantity item diperbarui di cart"})
+// 		return
+// 	}
+
+// 	// Tidak ada duplikat → insert item baru
+// 	_, err = db.Exec(`
+// 		INSERT INTO cart_items
+// 		(cart_id, product_id, product_variant_id, quantity, price_per_item, total_price, created_at, updated_at)
+// 		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+// 	`, userID, input.ProductID, input.ProductVariantID, input.Quantity, pricePerItem, totalPrice)
+// 	if err != nil {
+// 		_ = SubtractFromCartTotalPrice(db, userID, totalPrice) // rollback if needed
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menambahkan item ke cart"})
+// 		return
+// 	}
+
+// 	// Tambahkan total ke cart
+// 	if err := AddToCartTotalPrice(db, userID, totalPrice); err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total harga cart"})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, gin.H{"message": "✅ Item berhasil ditambahkan ke cart"})
+// }
+
 
 // +++++++++++++++++++++++++++++++++
 // Cart Item READ MY CART
 // +++++++++++++++++++++++++++++++++
-// func MyCartItems(c *gin.Context, db *sql.DB) {
-// 	userID := GetUserID(c)
+//---------------------------------------------------------------------------------------------------------------
 
-// 	// 1. Verify user exists
-// 	if !ValidateRecordExistence(c, db, "users", userID) {
-// 		c.JSON(http.StatusNotFound, gin.H{"error": "❌ User tidak ditemukan"})
-// 		return
-// 	}
-
-// 	// 2. Get cart items
-// 	cartItems, err := getCartItems(db, userID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data cart"})
-// 		return
-// 	}
-
-// 	if len(cartItems) == 0 {
-// 		c.JSON(http.StatusOK, gin.H{
-// 			"message": "⚠️ Keranjang kosong",
-// 			"data":    []CartsBasicModel{},
-// 		})
-// 		return
-// 	}
-
-// 	// 3. Process each item
-// 	var (
-// 		updatedItems   []CartsBasicModel
-// 		totalCartPrice int
-// 		needsUpdate    bool
-// 	)
-
-// 	for _, item := range cartItems {
-// 		// 3a. Get current product data
-// 		product, variant, err := getProductDetails(db, item.ProductID, item.ProductVariantID)
-// 		if err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memeriksa produk"})
-// 			return
-// 		}
-
-// 		// 3b. Determine current price
-// 		currentPrice := getCurrentPrice(product, variant)
-// 		currentStock := getCurrentStock(product, variant)
-
-// 		// 3c. Check if update needed
-// 		if item.PricePerItem != currentPrice {
-// 			oldTotal := item.Quantity * item.PricePerItem
-// 			newTotal := item.Quantity * currentPrice
-// 			diff := newTotal - oldTotal
-
-// 			// Update cart item
-// 			err = updateCartItem(db, item.ID, currentPrice, newTotal)
-// 			if err != nil {
-// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memperbarui item cart"})
-// 				return
-// 			}
-
-// 			// Update cart total
-// 			err = updateCartTotal(db, userID, diff)
-// 			if err != nil {
-// 				c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memperbarui total cart"})
-// 				return
-// 			}
-
-// 			needsUpdate = true
-// 			item.PricePerItem = currentPrice
-// 			item.TotalPrice = newTotal
-// 		}
-
-// 		// 3d. Get product images
-// 		_, thumbnails, err := getProductImages(db, item.ProductID)
-// 		if err != nil || len(thumbnails) == 0 {
-// 			thumbnails = []string{"https://via.placeholder.com/150"}
-// 		}
-
-// 		// 3e. Build response
-// 		responseItem := CartsBasicModel{
-// 			ID:               item.ID,
-// 			CartID:           item.CartID,
-// 			ProductID:        item.ProductID,
-// 			ProductVariantID: item.ProductVariantID,
-// 			Name:             product.Name,
-// 			Stock:            &currentStock,
-// 			Thumbnails:       []string{thumbnails[0]}, // Only first thumbnail
-// 			Quantity:         item.Quantity,
-// 			Price:            getBasePrice(product, variant),
-// 			PricePerItem:     item.PricePerItem,
-// 			TotalPrice:       item.TotalPrice,
-// 		}
-
-// 		if variant != nil {
-// 			responseItem.Variants = []Variant{*variant}
-// 		}
-
-// 		updatedItems = append(updatedItems, responseItem)
-// 		totalCartPrice += item.TotalPrice
-// 	}
-
-// 	// 4. If prices were updated, get fresh cart total
-// 	if needsUpdate {
-// 		totalCartPrice, err = getCartTotal(db, userID)
-// 		if err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memverifikasi total cart"})
-// 			return
-// 		}
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"message":          "✅ Berhasil mengambil item cart",
-// 		"data":             updatedItems,
-// 		"total_cart_price": totalCartPrice,
-// 	})
-// }
 func MyCartItems(c *gin.Context, db *sql.DB) {
 	userID := GetUserID(c)
 
@@ -2090,7 +2241,6 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 			return
 		}
 
-		// Ambil variant jika ada
 		var selectedVariant *Variant
 		if item.ProductVariantID != nil {
 			for _, v := range product.Variants {
@@ -2105,11 +2255,9 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 			}
 		}
 
-		// Hitung harga & stok saat ini
 		currentPrice := getCurrentPrice(product, selectedVariant)
 		currentStock := getCurrentStock(product, selectedVariant)
 
-		// Update jika perlu
 		if item.PricePerItem != currentPrice {
 			oldTotal := item.Quantity * item.PricePerItem
 			newTotal := item.Quantity * currentPrice
@@ -2132,7 +2280,16 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 			item.TotalPrice = newTotal
 		}
 
-		// Build respons item cart
+		// ✅ Konversi ke list ringan VariantBasic
+		var basicVariants []VariantBasic
+		for _, v := range product.Variants {
+			basicVariants = append(basicVariants, VariantBasic{
+				ID:   v.ID,
+				Name: v.Name,
+			})
+		}
+
+		// ✅ Bangun response cart item
 		responseItem := CartsBasicModel{
 			ID:               item.ID,
 			CartID:           item.CartID,
@@ -2141,14 +2298,11 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 			Name:             product.Name,
 			Stock:            &currentStock,
 			Thumbnails:       product.Thumbnails,
+			Variants:         basicVariants,
 			Quantity:         item.Quantity,
 			Price:            getBasePrice(product, selectedVariant),
 			PricePerItem:     item.PricePerItem,
 			TotalPrice:       item.TotalPrice,
-		}
-
-		if selectedVariant != nil {
-			responseItem.Variants = []Variant{*selectedVariant}
 		}
 
 		updatedItems = append(updatedItems, responseItem)
@@ -2169,6 +2323,8 @@ func MyCartItems(c *gin.Context, db *sql.DB) {
 		"total_cart_price": totalCartPrice,
 	})
 }
+
+
 
 // Reused helper functions
 func getCartItems(db *sql.DB, cartID int) ([]CartItemModel, error) {
@@ -2307,6 +2463,42 @@ func getCurrentPrice(product ProductsBasicModel, variant *Variant) int {
 	}
 	return *product.Price
 }
+
+func getMinVariantPrice(variants []Variant) *int {
+	if len(variants) == 0 {
+		return nil
+	}
+
+	min := getCurrentPrice(ProductsBasicModel{}, &variants[0])
+	for _, v := range variants[1:] {
+		price := getCurrentPrice(ProductsBasicModel{}, &v)
+		if price < min {
+			min = price
+		}
+	}
+	return &min
+}
+
+// func enrichProductWithComputedFields(p *ProductsBasicModel) {
+// 	if p.IsVarians {
+// 		// Hitung minimum harga dari varian
+// 		p.MinVariantPrice = getMinVariantPrice(p.Variants)
+
+// 		// Hitung stock gabungan
+// 		totalStock := 0
+// 		for _, v := range p.Variants {
+// 			totalStock += v.Stock
+// 		}
+// 		p.IsAvailable = totalStock > 0
+
+// 	} else {
+// 		// Produk tanpa varian
+// 		p.MinVariantPrice = nil
+// 		p.IsAvailable = p.Stock != nil && *p.Stock > 0
+// 	}
+// }
+
+
 
 func getBasePrice(product ProductsBasicModel, variant *Variant) int {
 	if variant != nil {
@@ -2538,6 +2730,7 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 	if !ok {
 		return
 	}
+
 	var input struct {
 		VariantID int `json:"variant_id"`
 	}
@@ -2546,7 +2739,6 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Mulai transaksi
 	tx, err := db.Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memulai transaksi"})
@@ -2554,7 +2746,7 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 	}
 	defer tx.Rollback()
 
-	// 1. Ambil data cart item saat ini
+	// 1. Ambil cart item saat ini
 	var currentCartItem struct {
 		CartID        int
 		ProductID     int
@@ -2563,11 +2755,11 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 		OldPrice      int
 		OldTotalPrice int
 	}
-
 	err = tx.QueryRow(`
-        SELECT cart_id, product_id, product_variant_id, quantity, price_per_item, total_price
-        FROM cart_items
-        WHERE id = ? AND cart_id = ?`, cartItemID, userID).Scan(
+		SELECT cart_id, product_id, product_variant_id, quantity, price_per_item, total_price
+		FROM cart_items
+		WHERE id = ? AND cart_id = ?
+	`, cartItemID, userID).Scan(
 		&currentCartItem.CartID,
 		&currentCartItem.ProductID,
 		&currentCartItem.OldVariantID,
@@ -2575,47 +2767,42 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 		&currentCartItem.OldPrice,
 		&currentCartItem.OldTotalPrice,
 	)
-
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "❌ Item cart tidak ditemukan atau bukan milik kamu"})
 		return
 	}
 
-	// 2. Verifikasi variant baru termasuk dalam product yang sama
+	// 2. Verifikasi variant baru milik produk yang sama
 	var variantProductID int
-	err = tx.QueryRow(`
-        SELECT product_id FROM product_variants
-        WHERE id = ?`, input.VariantID).Scan(&variantProductID)
-
+	err = tx.QueryRow(`SELECT product_id FROM product_variants WHERE id = ?`, input.VariantID).Scan(&variantProductID)
 	if err != nil || variantProductID != currentCartItem.ProductID {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Variant tidak valid untuk produk ini"})
 		return
 	}
 
-	// 3. Ambil data variant baru
+	// 3. Ambil detail variant baru
 	var newVariant struct {
 		Price         int
 		DiscountPrice *int
 		Stock         int
 		Name          string
 	}
-
 	err = tx.QueryRow(`
-        SELECT price, discount_price, stock, name
-        FROM product_variants
-        WHERE id = ?`, input.VariantID).Scan(
+		SELECT price, discount_price, stock, name
+		FROM product_variants
+		WHERE id = ?
+	`, input.VariantID).Scan(
 		&newVariant.Price,
 		&newVariant.DiscountPrice,
 		&newVariant.Stock,
 		&newVariant.Name,
 	)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data variant"})
 		return
 	}
 
-	// 4. Cek stok
+	// 4. Cek stok cukup
 	if currentCartItem.Quantity > newVariant.Stock {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":           "❌ Stok tidak mencukupi",
@@ -2624,88 +2811,298 @@ func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// 5. Tentukan harga yang akan digunakan (diskon atau normal)
+	// 5. Hitung harga baru
 	newPrice := newVariant.Price
 	if newVariant.DiscountPrice != nil {
 		newPrice = *newVariant.DiscountPrice
 	}
+	newTotal := currentCartItem.Quantity * newPrice
 
-	// 6. Hitung perbedaan harga
-	newTotalPrice := currentCartItem.Quantity * newPrice
-	priceDiff := newTotalPrice - currentCartItem.OldTotalPrice
+	// 6. Cek apakah item dengan variant baru sudah ada di cart user
+	var existingItem struct {
+		ID        int
+		Quantity  int
+		Total     int
+	}
+	err = tx.QueryRow(`
+		SELECT id, quantity, total_price
+		FROM cart_items
+		WHERE cart_id = ? AND product_id = ? AND product_variant_id = ? AND id != ?
+	`, userID, currentCartItem.ProductID, input.VariantID, cartItemID).Scan(&existingItem.ID, &existingItem.Quantity, &existingItem.Total)
 
-	// 7. Update cart item
+	if err == nil {
+		// 🧠 Jika item dengan variant baru sudah ada → gabungkan
+		newQty := existingItem.Quantity + currentCartItem.Quantity
+		if newQty > newVariant.Stock {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Total quantity melebihi stok"})
+			return
+		}
+		newCombinedTotal := newQty * newPrice
+		priceDiff := newCombinedTotal - (currentCartItem.OldTotalPrice + existingItem.Total)
+
+		// Update item lama (yg sudah ada) → tambah quantity
+		_, err = tx.Exec(`
+			UPDATE cart_items
+			SET quantity = ?, price_per_item = ?, total_price = ?, updated_at = NOW()
+			WHERE id = ?
+		`, newQty, newPrice, newCombinedTotal, existingItem.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update item yang digabung"})
+			return
+		}
+
+		// Hapus item yang sekarang (yang sedang di-update)
+		_, err = tx.Exec(`DELETE FROM cart_items WHERE id = ?`, cartItemID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menghapus item awal"})
+			return
+		}
+
+		// Update total cart
+		_, err = tx.Exec(`
+			UPDATE carts SET total_price = total_price + ?, updated_at = NOW()
+			WHERE id = ?
+		`, priceDiff, userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total cart"})
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menyimpan perubahan"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "✅ Variant digabung ke item yang sudah ada",
+			"merged_to_item_id": existingItem.ID,
+			"quantity_now":      newQty,
+		})
+		return
+	}
+
+	// 🧠 Jika belum ada item dengan variant baru → update item saat ini
+	priceDiff := newTotal - currentCartItem.OldTotalPrice
+
 	_, err = tx.Exec(`
-        UPDATE cart_items
-        SET product_variant_id = ?,
-            price_per_item = ?,
-            total_price = ?,
-            updated_at = NOW()
-        WHERE id = ?`,
-		input.VariantID,
-		newPrice,
-		newTotalPrice,
-		cartItemID,
-	)
-
+		UPDATE cart_items
+		SET product_variant_id = ?, price_per_item = ?, total_price = ?, updated_at = NOW()
+		WHERE id = ?
+	`, input.VariantID, newPrice, newTotal, cartItemID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update variant item"})
 		return
 	}
 
-	// 8. Update total cart
 	_, err = tx.Exec(`
-        UPDATE carts
-        SET total_price = total_price + ?,
-            updated_at = NOW()
-        WHERE id = ?`,
-		priceDiff,
-		currentCartItem.CartID,
-	)
-
+		UPDATE carts
+		SET total_price = total_price + ?, updated_at = NOW()
+		WHERE id = ?
+	`, priceDiff, currentCartItem.CartID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total cart"})
 		return
 	}
 
-	// Commit transaksi jika semua berhasil
 	if err := tx.Commit(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menyimpan perubahan"})
 		return
 	}
 
-	// 9. Response dengan data terupdate
-	updatedItem := struct {
-		ID               int    `json:"id"`
-		CartID           int    `json:"cart_id"`
-		ProductID        int    `json:"product_id"`
-		ProductVariantID int    `json:"product_variant_id"`
-		VariantName      string `json:"variant_name"`
-		Quantity         int    `json:"quantity"`
-		Price            int    `json:"price"`
-		DiscountPrice    *int   `json:"discount_price,omitempty"`
-		PricePerItem     int    `json:"price_per_item"`
-		TotalPrice       int    `json:"total_price"`
-		Stock            int    `json:"stock"`
-	}{
-		ID:               cartItemID,
-		CartID:           currentCartItem.CartID,
-		ProductID:        currentCartItem.ProductID,
-		ProductVariantID: input.VariantID,
-		VariantName:      newVariant.Name,
-		Quantity:         currentCartItem.Quantity,
-		Price:            newVariant.Price,
-		DiscountPrice:    newVariant.DiscountPrice,
-		PricePerItem:     newPrice,
-		TotalPrice:       newTotalPrice,
-		Stock:            newVariant.Stock,
-	}
-
+	// ✅ Respon sukses
 	c.JSON(http.StatusOK, gin.H{
 		"message": "✅ Variant berhasil diupdate",
-		"data":    updatedItem,
+		"data": gin.H{
+			"id":                cartItemID,
+			"cart_id":           currentCartItem.CartID,
+			"product_id":        currentCartItem.ProductID,
+			"product_variant_id": input.VariantID,
+			"variant_name":      newVariant.Name,
+			"quantity":          currentCartItem.Quantity,
+			"price":             newVariant.Price,
+			"discount_price":    newVariant.DiscountPrice,
+			"price_per_item":    newPrice,
+			"total_price":       newTotal,
+			"stock":             newVariant.Stock,
+		},
 	})
 }
+
+
+// func UpdateVariantCartItem(c *gin.Context, db *sql.DB) {
+// 	userID := GetUserID(c)
+// 	cartItemID, _, ok := GetIDParam(c)
+// 	if !ok {
+// 		return
+// 	}
+// 	var input struct {
+// 		VariantID int `json:"variant_id"`
+// 	}
+// 	if err := c.ShouldBindJSON(&input); err != nil || input.VariantID <= 0 {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Variant ID tidak valid atau tidak diisi"})
+// 		return
+// 	}
+
+// 	// Mulai transaksi
+// 	tx, err := db.Begin()
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memulai transaksi"})
+// 		return
+// 	}
+// 	defer tx.Rollback()
+
+// 	// 1. Ambil data cart item saat ini
+// 	var currentCartItem struct {
+// 		CartID        int
+// 		ProductID     int
+// 		OldVariantID  *int
+// 		Quantity      int
+// 		OldPrice      int
+// 		OldTotalPrice int
+// 	}
+
+// 	err = tx.QueryRow(`
+//         SELECT cart_id, product_id, product_variant_id, quantity, price_per_item, total_price
+//         FROM cart_items
+//         WHERE id = ? AND cart_id = ?`, cartItemID, userID).Scan(
+// 		&currentCartItem.CartID,
+// 		&currentCartItem.ProductID,
+// 		&currentCartItem.OldVariantID,
+// 		&currentCartItem.Quantity,
+// 		&currentCartItem.OldPrice,
+// 		&currentCartItem.OldTotalPrice,
+// 	)
+
+// 	if err != nil {
+// 		c.JSON(http.StatusNotFound, gin.H{"error": "❌ Item cart tidak ditemukan atau bukan milik kamu"})
+// 		return
+// 	}
+
+// 	// 2. Verifikasi variant baru termasuk dalam product yang sama
+// 	var variantProductID int
+// 	err = tx.QueryRow(`
+//         SELECT product_id FROM product_variants
+//         WHERE id = ?`, input.VariantID).Scan(&variantProductID)
+
+// 	if err != nil || variantProductID != currentCartItem.ProductID {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "❌ Variant tidak valid untuk produk ini"})
+// 		return
+// 	}
+
+// 	// 3. Ambil data variant baru
+// 	var newVariant struct {
+// 		Price         int
+// 		DiscountPrice *int
+// 		Stock         int
+// 		Name          string
+// 	}
+
+// 	err = tx.QueryRow(`
+//         SELECT price, discount_price, stock, name
+//         FROM product_variants
+//         WHERE id = ?`, input.VariantID).Scan(
+// 		&newVariant.Price,
+// 		&newVariant.DiscountPrice,
+// 		&newVariant.Stock,
+// 		&newVariant.Name,
+// 	)
+
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil data variant"})
+// 		return
+// 	}
+
+// 	// 4. Cek stok
+// 	if currentCartItem.Quantity > newVariant.Stock {
+// 		c.JSON(http.StatusBadRequest, gin.H{
+// 			"error":           "❌ Stok tidak mencukupi",
+// 			"stock_available": newVariant.Stock,
+// 		})
+// 		return
+// 	}
+
+// 	// 5. Tentukan harga yang akan digunakan (diskon atau normal)
+// 	newPrice := newVariant.Price
+// 	if newVariant.DiscountPrice != nil {
+// 		newPrice = *newVariant.DiscountPrice
+// 	}
+
+// 	// 6. Hitung perbedaan harga
+// 	newTotalPrice := currentCartItem.Quantity * newPrice
+// 	priceDiff := newTotalPrice - currentCartItem.OldTotalPrice
+
+// 	// 7. Update cart item
+// 	_, err = tx.Exec(`
+//         UPDATE cart_items
+//         SET product_variant_id = ?,
+//             price_per_item = ?,
+//             total_price = ?,
+//             updated_at = NOW()
+//         WHERE id = ?`,
+// 		input.VariantID,
+// 		newPrice,
+// 		newTotalPrice,
+// 		cartItemID,
+// 	)
+
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update variant item"})
+// 		return
+// 	}
+
+// 	// 8. Update total cart
+// 	_, err = tx.Exec(`
+//         UPDATE carts
+//         SET total_price = total_price + ?,
+//             updated_at = NOW()
+//         WHERE id = ?`,
+// 		priceDiff,
+// 		currentCartItem.CartID,
+// 	)
+
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal update total cart"})
+// 		return
+// 	}
+
+// 	// Commit transaksi jika semua berhasil
+// 	if err := tx.Commit(); err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal menyimpan perubahan"})
+// 		return
+// 	}
+
+// 	// 9. Response dengan data terupdate
+// 	updatedItem := struct {
+// 		ID               int    `json:"id"`
+// 		CartID           int    `json:"cart_id"`
+// 		ProductID        int    `json:"product_id"`
+// 		ProductVariantID int    `json:"product_variant_id"`
+// 		VariantName      string `json:"variant_name"`
+// 		Quantity         int    `json:"quantity"`
+// 		Price            int    `json:"price"`
+// 		DiscountPrice    *int   `json:"discount_price,omitempty"`
+// 		PricePerItem     int    `json:"price_per_item"`
+// 		TotalPrice       int    `json:"total_price"`
+// 		Stock            int    `json:"stock"`
+// 	}{
+// 		ID:               cartItemID,
+// 		CartID:           currentCartItem.CartID,
+// 		ProductID:        currentCartItem.ProductID,
+// 		ProductVariantID: input.VariantID,
+// 		VariantName:      newVariant.Name,
+// 		Quantity:         currentCartItem.Quantity,
+// 		Price:            newVariant.Price,
+// 		DiscountPrice:    newVariant.DiscountPrice,
+// 		PricePerItem:     newPrice,
+// 		TotalPrice:       newTotalPrice,
+// 		Stock:            newVariant.Stock,
+// 	}
+
+// 	c.JSON(http.StatusOK, gin.H{
+// 		"message": "✅ Variant berhasil diupdate",
+// 		"data":    updatedItem,
+// 	})
+// }
 
 // +++++++++++++++++++++++++++++++++
 // Cart Item DELETE MY CART

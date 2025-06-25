@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { ActivityIndicator, ScrollView, RefreshControl } from 'react-native'; // Import ScrollView and RefreshControl
+import { ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -9,28 +10,36 @@ import { Image } from '@/components/ui/image';
 import { Pressable } from "@/components/ui/pressable";
 import { useToast, Toast, ToastTitle, ToastDescription } from "@/components/ui/toast";
 import { Icon, CloseIcon, HelpCircleIcon, CheckCircleIcon } from "@/components/ui/icon";
+import { Minus, Plus, Trash2 } from 'lucide-react-native';
+
+import {
+  Select, SelectTrigger, SelectInput, SelectIcon, SelectPortal,
+  SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectItem
+} from "@/components/ui/select";
+import { ChevronDownIcon } from "@/components/ui/icon";
+
 import {
   useGetCartItemsQuery,
   useRemoveCartItemMutation,
   useUpdateCartItemQuantityMutation,
+  useUpdateCartItemVariantMutation,
 } from '@/src/store/api/cartApi';
 import { useCreateOrderMutation } from '@/src/store/api/orderApi';
 import { router } from 'expo-router';
-import { Minus, Plus, Trash2 } from 'lucide-react-native'; // Remove ShoppingBasket if not used directly here
 
 export default function CartScreen() {
   const { data: cartData, isLoading, isError, refetch } = useGetCartItemsQuery();
   const [updateQuantity, { isLoading: updatingQuantity }] = useUpdateCartItemQuantityMutation();
   const [removeItem, { isLoading: removingItem }] = useRemoveCartItemMutation();
   const [createOrder, { isLoading: creatingOrder }] = useCreateOrderMutation();
+  const [updateVariant, { isLoading: updatingVariant }] = useUpdateCartItemVariantMutation();
   const toast = useToast();
 
   const [loadingItemId, setLoadingItemId] = useState<number | null>(null);
   const [localQuantities, setLocalQuantities] = useState<Record<number, number>>({});
   const [updateTimeout, setUpdateTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
-  const [refreshing, setRefreshing] = useState(false); // State for pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Initialize local quantities when cart data changes
   useEffect(() => {
     if (cartData?.data) {
       const initialQuantities = cartData.data.reduce((acc, item) => {
@@ -95,13 +104,26 @@ export default function CartScreen() {
     });
   }, [toast]);
 
+  const handleRemoveItem = useCallback(async (itemId: number) => {
+    setLoadingItemId(itemId);
+    try {
+      await removeItem(itemId).unwrap();
+      showSuccessToast('Produk berhasil dihapus dari keranjang.');
+    } catch (error: any) {
+      showErrorToast(error?.data?.message || 'Gagal menghapus produk.');
+    } finally {
+      setLoadingItemId(null);
+    }
+  }, [removeItem, showSuccessToast, showErrorToast]);
+
+
   const showDeleteConfirmation = useCallback((itemId: number) => {
-    const toastId = Math.random().toString(); // Use string for ID
+    const toastId = Math.random().toString();
 
     toast.show({
       id: toastId,
       placement: 'top',
-      duration: null, // Persistent until manually closed
+      duration: null,
       render: ({ id }) => (
         <Toast
           action="error"
@@ -134,7 +156,6 @@ export default function CartScreen() {
               size="sm"
               className="px-3.5 self-center"
               onPress={() => {
-                // Reset quantity to 1 if canceled or if it was 0 before confirmation
                 setLocalQuantities(prev => ({
                   ...prev,
                   [itemId]: prev[itemId] > 0 ? prev[itemId] : 1
@@ -148,9 +169,9 @@ export default function CartScreen() {
         </Toast>
       ),
     });
-  }, [toast]);
+  }, [toast, handleRemoveItem]);
 
-  // --- Quantity Management ---
+
   const debouncedUpdateQuantity = useCallback(
     async (itemId: number, newQuantity: number) => {
       if (updateTimeout) clearTimeout(updateTimeout);
@@ -166,7 +187,7 @@ export default function CartScreen() {
           showErrorToast(`Kuantitas tidak valid atau melebihi stok (${item.stock}).`);
           setLocalQuantities(prev => ({
             ...prev,
-            [itemId]: item.quantity, // Revert to original quantity from server
+            [itemId]: item.quantity,
           }));
           return;
         }
@@ -175,17 +196,16 @@ export default function CartScreen() {
         try {
           await updateQuantity({ id: itemId, quantity: newQuantity }).unwrap();
           showSuccessToast('Kuantitas berhasil diupdate');
-          // No need to refetch full cart, RTK Query will handle cache invalidation
         } catch (error: any) {
           setLocalQuantities(prev => ({
             ...prev,
-            [itemId]: item.quantity, // Revert on error
+            [itemId]: item.quantity,
           }));
           showErrorToast(error?.data?.message || 'Gagal mengupdate kuantitas.');
         } finally {
           setLoadingItemId(null);
         }
-      }, 700); // Debounce for 700ms
+      }, 700);
 
       setUpdateTimeout(timeout);
     },
@@ -197,10 +217,8 @@ export default function CartScreen() {
       const currentQuantity = prev[itemId] || 0;
       let newQuantity = currentQuantity + change;
 
-      // Ensure quantity doesn't go below 0 (for delete confirmation trigger)
       if (newQuantity < 0) newQuantity = 0;
 
-      // Find the item to check its stock
       const item = cartItems.find(i => i.id === itemId);
 
       if (!item) {
@@ -208,44 +226,50 @@ export default function CartScreen() {
         return prev;
       }
 
-      // If new quantity is 0, trigger delete confirmation
       if (newQuantity === 0) {
         showDeleteConfirmation(itemId);
-        return { ...prev, [itemId]: 0 }; // Temporarily set to 0 locally
+        return { ...prev, [itemId]: 0 };
       }
 
-      // Prevent increasing quantity beyond stock
       if (newQuantity > item.stock) {
         showErrorToast(`Stok untuk produk ini hanya ${item.stock}.`);
-        return { ...prev, [itemId]: item.stock }; // Set to max stock locally
+        return { ...prev, [itemId]: item.stock };
       }
 
-      // Update local state immediately for responsiveness
       const updatedQuantities = { ...prev, [itemId]: newQuantity };
-
-      // Trigger debounced API update
       debouncedUpdateQuantity(itemId, newQuantity);
-
       return updatedQuantities;
     });
   }, [cartItems, debouncedUpdateQuantity, showDeleteConfirmation, showErrorToast]);
 
+  const handleVariantChange = useCallback(async (itemId: number, newVariantId: string) => {
+    const item = cartItems.find(i => i.id === itemId);
+    if (!item) {
+      showErrorToast('Produk tidak ditemukan di keranjang.');
+      return;
+    }
 
-  // Handle item removal
-  const handleRemoveItem = useCallback(async (itemId: number) => {
+    if (!item.variants || item.variants.length === 0) {
+        showErrorToast('Varian tidak tersedia untuk produk ini.');
+        return;
+    }
+
+    const currentVariantId = item.product_variant_id?.toString();
+    if (currentVariantId === newVariantId) {
+      return;
+    }
+
     setLoadingItemId(itemId);
     try {
-      await removeItem(itemId).unwrap();
-      showSuccessToast('Produk berhasil dihapus dari keranjang.');
-      // RTK Query will handle cache invalidation and refetching getCartItemsQuery automatically
+      const response = await updateVariant({ id: itemId, variant_id: parseInt(newVariantId) }).unwrap();
+      showSuccessToast(response.message || 'Varian berhasil diupdate!');
     } catch (error: any) {
-      showErrorToast(error?.data?.message || 'Gagal menghapus produk.');
+      showErrorToast(error?.data?.message || 'Gagal mengganti varian.');
     } finally {
       setLoadingItemId(null);
     }
-  }, [removeItem, showSuccessToast, showErrorToast]);
+  }, [cartItems, updateVariant, showSuccessToast, showErrorToast]);
 
-  // Handle creating an order
   const handleCreateOrder = useCallback(async () => {
     if (isEmpty) {
       showErrorToast('Keranjang Anda kosong. Tambahkan produk sebelum memesan.');
@@ -255,28 +279,25 @@ export default function CartScreen() {
     try {
       const response = await createOrder().unwrap();
       showSuccessToast(response.message || 'Order berhasil dibuat!');
-      router.push('/order'); // Navigate to order history after successful order
+      router.push('/order');
     } catch (error: any) {
       const errorMessage = error?.data?.message || error?.message || 'Gagal membuat order. Silakan coba lagi.';
       showErrorToast(errorMessage);
     }
   }, [createOrder, isEmpty, showErrorToast, showSuccessToast]);
 
-  // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
   }, [refetch]);
 
-  // Cleanup timeout on component unmount
   useEffect(() => {
     return () => {
       if (updateTimeout) clearTimeout(updateTimeout);
     };
   }, [updateTimeout]);
 
-  // --- Loading and Error States ---
   if (isLoading) {
     return (
       <Box style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -299,7 +320,6 @@ export default function CartScreen() {
     );
   }
 
-  // --- Main Render ---
   return (
     <Box style={{ flex: 1, backgroundColor: '#F7F7F7' }}>
       <ScrollView
@@ -328,7 +348,14 @@ export default function CartScreen() {
               <VStack space="sm" style={{ flex: 1 }}>
                 {cartItems.map((item) => {
                   const isCurrentLoading = loadingItemId === item.id;
-                  const currentQuantity = localQuantities[item.id] ?? item.quantity; // Use nullish coalescing
+                  const currentQuantity = localQuantities[item.id] ?? item.quantity;
+
+                  // Cari nama varian yang sedang dipilih
+                  const selectedVariant = item.variants?.find(
+                    (v) => v.id === item.product_variant_id
+                  );
+                  // Gunakan nama varian jika ditemukan, jika tidak, tampilkan pesan default
+                  const displayedVariantName = selectedVariant ? selectedVariant.name : 'Varian tidak dikenal';
 
                   return (
                     <Box
@@ -359,13 +386,52 @@ export default function CartScreen() {
                           <Text style={{ fontWeight: '600' }} numberOfLines={2}>
                             {item.name}
                           </Text>
-                          {/* {item.variant && ( // Display variant if available
-                            <Text size="sm" color="$coolGray500">
-                              Varian: {item.variant}
-                            </Text>
-                          )} */}
+
+                          {/* Render dropdown hanya jika item.variants ada dan tidak kosong */}
+                          {item.variants && item.variants.length > 0 && (
+                            <VStack space="xs" style={{ width: '100%', maxWidth: 200, marginTop: 4 }}>
+                              {/* <Text size="sm" style={{ color: '#64748b' }}>Varian:</Text> */}
+                              <Select
+                                selectedValue={item.product_variant_id?.toString()}
+                                onValueChange={(value) => handleVariantChange(item.id, value)}
+                                isDisabled={isCurrentLoading || updatingVariant}
+                              >
+                                <SelectTrigger variant="outline" size="sm" style={{ opacity: (isCurrentLoading || updatingVariant) ? 0.6 : 1 }}>
+                                  {/* Tampilkan nama varian yang sedang dipilih di SelectInput */}
+                                  <SelectInput
+                                    placeholder="Pilih Varian"
+                                    value={displayedVariantName}
+                                    style={{ textAlign: 'center' }} // ✅ Rata tengah di sini
+                                  />
+                                  {isCurrentLoading && updatingVariant ? (
+                                    <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />
+                                  ) : (
+                                    <SelectIcon className="mr-3" as={ChevronDownIcon} />
+                                  )}
+                                </SelectTrigger>
+                                <SelectPortal>
+                                  <SelectBackdrop />
+                                  <SelectContent
+                                    style={{ paddingVertical: 8, paddingHorizontal: 4 }}
+                                  >
+                                    <SelectDragIndicatorWrapper>
+                                      <SelectDragIndicator />
+                                    </SelectDragIndicatorWrapper>
+                                    {item.variants.map((variant) => (
+                                      <SelectItem
+                                        key={variant.id}
+                                        label={variant.name}
+                                        value={variant.id.toString()}
+                                      />
+                                    ))}
+                                  </SelectContent>
+                                </SelectPortal>
+                              </Select>
+                            </VStack>
+                          )}
+
                           {item.price_per_item && item.price_per_item < item.price ? (
-                            <HStack space="sm" style={{ alignItems: 'center' }}>
+                            <HStack space="sm" style={{ alignItems: 'center', marginTop: 4 }}>
                               <Text style={{ color: '#FF6347', fontWeight: 'bold' }}>
                                 Rp {item.price_per_item?.toLocaleString('id-ID')}
                               </Text>
@@ -374,13 +440,12 @@ export default function CartScreen() {
                               </Text>
                             </HStack>
                           ) : (
-                            <Text style={{ color: '#007bff', fontWeight: 'bold' }}>
+                            <Text style={{ color: '#007bff', fontWeight: 'bold', marginTop: 4 }}>
                               Rp {item.price?.toLocaleString('id-ID')}
                             </Text>
                           )}
 
                           <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                            {/* Quantity Controls */}
                             <HStack
                               style={{
                                 alignItems: 'center',
@@ -394,16 +459,16 @@ export default function CartScreen() {
                                 size="xs"
                                 variant="link"
                                 onPress={() => handleQuantityChange(item.id, -1)}
-                                disabled={isCurrentLoading || currentQuantity <= 1}
+                                disabled={isCurrentLoading || currentQuantity <= 1 || updatingVariant}
                                 style={{
                                   padding: 4,
-                                  opacity: (isCurrentLoading || currentQuantity <= 1) ? 0.5 : 1,
+                                  opacity: (isCurrentLoading || currentQuantity <= 1 || updatingVariant) ? 0.5 : 1,
                                 }}
                               >
                                 <Minus width={16} height={16} />
                               </Button>
                               <Text style={{ minWidth: 24, textAlign: 'center' }}>
-                                {(isCurrentLoading && updatingQuantity) || (isCurrentLoading && removingItem) ? (
+                                {(isCurrentLoading && (updatingQuantity || updatingVariant)) || (isCurrentLoading && removingItem) ? (
                                   <ActivityIndicator size="small" />
                                 ) : (
                                   currentQuantity
@@ -413,29 +478,30 @@ export default function CartScreen() {
                                 size="xs"
                                 variant="link"
                                 onPress={() => handleQuantityChange(item.id, 1)}
-                                disabled={currentQuantity >= item.stock || isCurrentLoading}
+                                disabled={currentQuantity >= item.stock || isCurrentLoading || updatingVariant}
                                 style={{
                                   padding: 4,
-                                  opacity: (currentQuantity >= item.stock || isCurrentLoading) ? 0.5 : 1,
+                                  opacity: (currentQuantity >= item.stock || isCurrentLoading || updatingVariant) ? 0.5 : 1,
                                 }}
                               >
                                 <Plus width={16} height={16} />
                               </Button>
                             </HStack>
 
-                            {/* Remove Button */}
+                            {/* Tombol sampah tetap di kanan bawah */}
                             <Button
                               size="xs"
                               variant="link"
                               onPress={() => showDeleteConfirmation(item.id)}
                               style={{
                                 padding: 4,
-                                opacity: isCurrentLoading ? 0.5 : 1,
+                                opacity: isCurrentLoading || updatingVariant ? 0.5 : 1,
                               }}
-                              disabled={isCurrentLoading}
+                              disabled={isCurrentLoading || updatingVariant}
                             >
                               <Trash2 width={20} height={20} stroke="#ef4444" />
                             </Button>
+
                           </HStack>
                         </VStack>
                       </HStack>
@@ -444,7 +510,6 @@ export default function CartScreen() {
                 })}
               </VStack>
 
-              {/* Total and Checkout Button */}
               <Box
                 style={{
                   backgroundColor: '#fff',
@@ -455,7 +520,7 @@ export default function CartScreen() {
                   shadowOpacity: 0.1,
                   shadowRadius: 4,
                   elevation: 2,
-                  marginTop: 16, // Add some margin from items above
+                  marginTop: 16,
                 }}
               >
                 <HStack style={{ justifyContent: 'space-between', marginBottom: 12 }}>

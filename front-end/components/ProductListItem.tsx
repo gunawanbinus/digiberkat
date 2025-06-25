@@ -63,6 +63,7 @@
 //     </Link>
 //   );
 // }
+// @/components/ProductListItem.tsx
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/card';
@@ -133,7 +134,7 @@ export default function ProductListItem({ product }: { product: ProductListItemD
 
                 <View className="flex-row items-center gap-2">
                   <Heading size="lg" className="text-red-600 font-bold">
-                    Rp {product.discountPrice?.toLocaleString('id-ID')}
+                    {product.discountPrice?.toLocaleString('id-ID')}
                   </Heading>
                   <View className="bg-red-100 rounded px-2 py-0.5">
                     <Text className="text-xs font-semibold text-red-600">-{discountPercent}%</Text>

@@ -74,6 +74,12 @@ type ProductImageModel struct {
 	ThumbnailURL string `json:"thumbnail_url"`
 }
 
+// Untuk versi ringan dari variant yang dikirim ke frontend
+type VariantBasic struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+}
+
 type CartsBasicModel struct {
 	ID               int       `json:"id"` // id cart item
 	CartID           int       `json:"cart_id"`
@@ -82,7 +88,7 @@ type CartsBasicModel struct {
 	Name             string    `json:"name"`
 	Stock            *int      `json:"stock"`
 	Thumbnails       []string  `json:"thumbnails"` // Array thumbnail
-	Variants         []Variant `json:"variants,omitempty"`
+	Variants         []VariantBasic `json:"variants,omitempty"`
 	Quantity         int       `json:"quantity"`
 	Price            int       `json:"price"`
 	PricePerItem     int       `json:"price_per_item"`

@@ -1,4 +1,10 @@
+// @/src/store/api/cartApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+interface CartItemVariant {
+  id: number;
+  name: string;
+}
 
 interface CartItem {
   id: number;
@@ -8,6 +14,7 @@ interface CartItem {
   name: string;
   stock: number;
   thumbnails: string[];
+  variants: CartItemVariant[];
   quantity: number;
   price: number;
   price_per_item: number;
@@ -24,6 +31,19 @@ interface AddToCartPayload {
   product_id: number;
   quantity: number;
   product_variant_id?: number;
+}
+
+// ✅ Interface untuk payload update variant
+interface UpdateCartItemVariantPayload {
+  id: number; // ID cart item yang akan diupdate
+  variant_id: number; // ID variant baru
+}
+
+// ✅ Interface untuk respons sukses update variant
+interface UpdateCartItemVariantSuccessResponse {
+  merged_to_item_id?: number; // Opsional, jika item digabungkan
+  message: string; // Pesan dari backend (kita bisa abaikan ini di UI jika mau)
+  quantity_now?: number; // Opsional, jumlah quantity setelah digabung/diupdate
 }
 
 export const cartApi = createApi({
@@ -81,6 +101,23 @@ export const cartApi = createApi({
       },
     }),
 
+    // ✅ Endpoint baru untuk update variant
+    updateCartItemVariant: builder.mutation<UpdateCartItemVariantSuccessResponse, UpdateCartItemVariantPayload>({
+      query: ({ id, variant_id }) => ({
+        url: `cart-items/${id}/variant`,
+        method: 'PATCH',
+        body: { variant_id }, // Payload harus { variant_id: number }
+      }),
+      invalidatesTags: ['Cart'], // Invalidate tag Cart agar data keranjang di-refetch
+      transformErrorResponse: (response: { status: number; data?: { message?: string } }) => {
+        // Meskipun Anda ingin pesan suksesnya generik, pesan error tetap perlu jelas
+        return {
+          status: response.status,
+          message: response.data?.message || 'Gagal mengganti varian item keranjang',
+        };
+      },
+    }),
+
     removeCartItem: builder.mutation<{ message: string }, number>({
       query: (id) => ({
         url: `cart-items/${id}`,
@@ -102,5 +139,5 @@ export const {
   useAddToCartMutation,
   useUpdateCartItemQuantityMutation,
   useRemoveCartItemMutation,
+  useUpdateCartItemVariantMutation, // ✅ Export hook baru
 } = cartApi;
-
