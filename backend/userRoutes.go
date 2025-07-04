@@ -4400,59 +4400,78 @@ func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
 }
 
 func GetLowStocks(c *gin.Context, db *sql.DB) {
-	// Ambil produk yang stok <= 1
-	rows, err := db.Query(`
-		SELECT p.id, p.name, pi.thumbnail_url, pv.id, pv.name, COALESCE(pv.stock, p.stock)
-		FROM products p
-		LEFT JOIN product_variants pv ON p.id = pv.product_id
-		LEFT JOIN product_images pi ON p.id = pi.product_id
-		WHERE (p.stock <= 1 AND p.stock IS NOT NULL) OR (pv.stock <= 1 AND pv.stock IS NOT NULL)
-		ORDER BY p.id, pv.id;
-	`)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar produk"})
-		return
-	}
-	defer rows.Close()
+    // Ambil produk yang stok <= 2 dan bukan null
+    rows, err := db.Query(`
+        SELECT 
+            p.id, 
+            p.name, 
+            (SELECT thumbnail_url FROM product_images WHERE product_id = p.id LIMIT 1) as thumbnail_url,
+            pv.id, 
+            pv.name, 
+            CASE 
+                WHEN pv.stock IS NOT NULL THEN pv.stock
+                ELSE p.stock
+            END as stock
+        FROM products p
+        LEFT JOIN product_variants pv ON p.id = pv.product_id
+        WHERE 
+            (pv.stock IS NOT NULL AND pv.stock <= 1) OR
+            (pv.stock IS NULL AND p.stock IS NOT NULL AND p.stock <= 1)
+        ORDER BY p.id, pv.id;
+    `)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar produk"})
+        return
+    }
+    defer rows.Close()
 
-	type LowStockProducts struct {
-		ProductID   int    `json:"product_id"`
-		ProductName string `json:"product_name"`
-		Thumbnail   string `json:"thumbnail"`
-		VariantID   *int    `json:"variant_id"`
-		VariantName *string `json:"variant_name"`
-		Stock       int    `json:"stock"`
-	}
+    type LowStockProducts struct {
+        ProductID   int     `json:"product_id"`
+        ProductName string  `json:"product_name"`
+        Thumbnail   *string `json:"thumbnail"`  // Menggunakan pointer karena bisa null
+        VariantID   *int    `json:"variant_id"`
+        VariantName *string `json:"variant_name"`
+        Stock       int     `json:"stock"`
+    }
 
-	var products []LowStockProducts
+    var products []LowStockProducts
 
-	for rows.Next() {
-		var product LowStockProducts
-		err := rows.Scan(
-			&product.ProductID,
-			&product.ProductName,
-			&product.Thumbnail,
-			&product.VariantID,
-			&product.VariantName,
-			&product.Stock,
-		)
-		if err != nil {
-			continue
-		}
+    for rows.Next() {
+        var product LowStockProducts
+        err := rows.Scan(
+            &product.ProductID,
+            &product.ProductName,
+            &product.Thumbnail,
+            &product.VariantID,
+            &product.VariantName,
+            &product.Stock,
+        )
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal memproses data produk"})
+            return
+        }
 
-		products = append(products, product)
-	}
+        // Hanya tambahkan jika stock <= 2 (double check)
+        if product.Stock <= 2 {
+            products = append(products, product)
+        }
+    }
 
-	if len(products) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "⚠️ Tidak ada produk",
-			"data":    []LowStockProducts{},
-		})
-		return
-	}
+    if err = rows.Err(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Error saat membaca data produk"})
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "✅ Berhasil mengambil data produk",
-		"data":    products,
-	})
+    if len(products) == 0 {
+        c.JSON(http.StatusOK, gin.H{
+            "message": "⚠️ Tidak ada produk dengan stok rendah",
+            "data":    []LowStockProducts{},
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "message": "✅ Berhasil mengambil data produk dengan stok rendah",
+        "data":    products,
+    })
 }
