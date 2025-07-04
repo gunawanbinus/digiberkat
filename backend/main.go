@@ -47,6 +47,7 @@ func main() {
 	OrderRoutes(r, db)
 	PositionRoutes(r, db)
 	StatRoutes(r, db)
+	AiRoutes(r)
 
 	// // Menjalankan server
 	if err := r.Run(":8001"); err != nil {
