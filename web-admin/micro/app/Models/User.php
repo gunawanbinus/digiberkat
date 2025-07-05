@@ -4,6 +4,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Carbon; // Add this import
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -48,66 +49,48 @@ class User extends Authenticatable
     /**
      * Simpan data user dari response API Golang
      */
-    // public static function saveFromApiResponse(array $apiResponse): User
-    // {
-    //     $userData = [
-    //         'id' => $apiResponse['user']['id'] ?? 0, // Handle case ketika id null/0
-    //         'username' => $apiResponse['user']['username'],
-    //         'email' => $apiResponse['user']['username'], // Asumsi username adalah email
-    //         'role' => $apiResponse['role'],
-    //         'api_token' => $apiResponse['token'],
-    //         // 'token_expires_at' => now()->addSeconds(
-    //         //     self::getTokenExpiryFromJWT($apiResponse['token'])?? config('auth.token_lifetime', 86400)
-    //         // ),
-    //     ];
-
-    //     return self::updateOrCreate(
-    //         ['id' => $userData['id']],
-    //         $userData
-    //     );
-    // }
-    public static function storeUserInSession(array $apiResponse): void
-    {
-        $token = $apiResponse['token'];
-        $secondsUntilExpire = self::getTokenExpiryFromJWT($token);
-
-        session([
-            'user' => [
-                'id' => $apiResponse['user']['id'],
-                'username' => $apiResponse['user']['username'], // email disini
-                // 'email' => $apiResponse['user']['username'],
-                'role' => $apiResponse['role'],
-            ],
-            'api_token' => $token,
-            'token_expires_at' => now()->addSeconds($secondsUntilExpire ?? config('auth.token_lifetime', 86400))
-        ]);
-    }
 
 
-
-    /**
-     * Dekode JWT untuk mendapatkan expiry time
-     */
-    public static function getTokenExpiryFromJWT(string $token): ?int
-    {
-        try {
-            $parts = explode('.', $token);
-            if (count($parts) !== 3) {
-                return null;
-            }
-
-            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
-            if (isset($payload['exp'])) {
-                return $payload['exp'] - time(); // hitung sisa detik dari sekarang
-            }
-
-            return null;
-        } catch (\Exception $e) {
+/**
+ * Dekode JWT untuk mendapatkan expiry time
+ */
+public static function getTokenExpiryFromJWT(string $token): ?int
+{
+    try {
+        $parts = explode('.', $token);
+        if (count($parts) !== 3) {
             return null;
         }
-    }
 
+        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+
+        if (isset($payload['exp'])) {
+            return $payload['exp']; // Return timestamp langsung, bukan selisih
+        }
+
+        return null;
+    } catch (\Exception $e) {
+        return null;
+    }
+}
+
+public static function storeUserInSession(array $apiResponse): void
+{
+    $token = $apiResponse['token'];
+    $expiryTimestamp = self::getTokenExpiryFromJWT($token);
+
+    session([
+        'user' => [
+            'id' => $apiResponse['user']['id'],
+            'username' => $apiResponse['user']['username'],
+            'role' => $apiResponse['role'], // "admin" or "employee"
+        ],
+        'api_token' => $token,
+        'token_expires_at' => $expiryTimestamp
+            ? Carbon::createFromTimestamp($expiryTimestamp)
+            : now()->addSeconds(config('auth.token_lifetime', 86400))
+    ]);
+}
 
 
 
@@ -188,49 +171,4 @@ class User extends Authenticatable
     }
 
 }
-// namespace App\Models;
 
-// // use Illuminate\Contracts\Auth\MustVerifyEmail;
-// use Illuminate\Database\Eloquent\Factories\HasFactory;
-// use Illuminate\Foundation\Auth\User as Authenticatable;
-// use Illuminate\Notifications\Notifiable;
-
-// class User extends Authenticatable
-// {
-//     /** @use HasFactory<\Database\Factories\UserFactory> */
-//     use HasFactory, Notifiable;
-
-//     /**
-//      * The attributes that are mass assignable.
-//      *
-//      * @var list<string>
-//      */
-//     protected $fillable = [
-//         'name',
-//         'email',
-//         'password',
-//     ];
-
-//     /**
-//      * The attributes that should be hidden for serialization.
-//      *
-//      * @var list<string>
-//      */
-//     protected $hidden = [
-//         'password',
-//         'remember_token',
-//     ];
-
-//     /**
-//      * Get the attributes that should be cast.
-//      *
-//      * @return array<string, string>
-//      */
-//     protected function casts(): array
-//     {
-//         return [
-//             'email_verified_at' => 'datetime',
-//             'password' => 'hashed',
-//         ];
-//     }
-// }

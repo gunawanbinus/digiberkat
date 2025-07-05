@@ -24,3 +24,4 @@ class CheckRole
         return $next($request);
     }
 }
+// check bootstrap/app.php

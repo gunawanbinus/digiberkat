@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Http\Controllers\LoginController;
 use Illuminate\Support\Facades\Session;
+use Carbon\Carbon;
 
 class CheckTokenExpiry
 {
@@ -15,12 +16,18 @@ class CheckTokenExpiry
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next)
-    {
-        if (LoginController::isTokenExpired()) {
-            return redirect()->route('login')->withErrors('Sesi Anda telah habis, silakan login ulang.');
-        }
+    public function handle($request, Closure $next)
+        {
+            $expiry = Session::get('token_expires_at');
 
-        return $next($request);
-    }
+            if (!$expiry || Carbon::now()->gt($expiry)) {
+                Session::flush();
+                return redirect()
+                    ->route('login')
+                    ->with('error', 'Sesi telah habis, silakan login ulang.');
+            }
+
+            return $next($request);
+        }
 }
+// check bootstrap/app.php

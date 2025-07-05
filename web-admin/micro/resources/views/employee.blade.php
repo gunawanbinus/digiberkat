@@ -21,7 +21,7 @@
     @include('layouts.partials.navbar')
 
     <div id="layoutSidenav">
-        @include('layouts.partials.sidebar')
+        @include('layouts.partials.sidebaremployee')
 
         <div id="layoutSidenav_content">
             <main>

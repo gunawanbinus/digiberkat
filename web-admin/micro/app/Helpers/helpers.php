@@ -17,3 +17,23 @@ if (!function_exists('currentUser')) {
     }
 }
 
+// ambil data dari session yang diatur di User.php lihat dibawah ini temukan di User.php
+
+// public static function storeUserInSession(array $apiResponse): void
+// {
+//     $token = $apiResponse['token'];
+//     $expiryTimestamp = self::getTokenExpiryFromJWT($token);
+
+//     session([
+//         'user' => [
+//             'id' => $apiResponse['user']['id'],
+//             'username' => $apiResponse['user']['username'],
+//             'role' => $apiResponse['role'], // "admin" or "employee"
+//         ],
+//         'api_token' => $token,
+//         'token_expires_at' => $expiryTimestamp
+//             ? Carbon::createFromTimestamp($expiryTimestamp)
+//             : now()->addSeconds(config('auth.token_lifetime', 86400))
+//     ]);
+// }
+

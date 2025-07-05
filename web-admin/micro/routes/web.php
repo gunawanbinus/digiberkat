@@ -1,201 +1,121 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Request;
+
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\RestockRequestController;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Http\Request;
 
-Route::middleware(['check.login', 'check.token'])->group(function () {
-    // Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/account', [DashboardController::class, 'account'])->name('account');
-    // Route::get('/admin/dashboard', function () {
-    // return view('admin.dashboard');
-    // ;
-});
-
-// Route ini hanya bisa diakses oleh admin
-Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(function () {
-    Route::get('/employee/register', [LoginController::class, 'employeeRegister'])->name('employee.register');
-    Route::post('/employee/register', [LoginController::class, 'doEmployeeRegister'])->name('employee.register.do');
-});
-
-Route::get('/products', [ProductController::class, 'index'], function () {
-    $token = session('token');
-    if (!$token) {
-        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
-    }
-})->name('products.index');
-
-Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
-
-Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
-
-Route::post('/products', [ProductController::class, 'store'])->name('products.store');
-
-Route::get('/', function () {
-    return redirect()->route('login');
-});
-
-Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-
-Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
-
-Route::get('/orders/all', [OrderController::class, 'index'], function () {
-    $token = session('token');
-    if (!$token) {
-        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
-    }
-})->name('orders.index');
-
-Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-
-Route::post('/orders/{id}/finish', function ($id) {
-    $token = session('token');
-
-    $response = Http::withToken($token)->put(env('GOLANG_API_URL') . "orders/{$id}/finish");
-
-    if ($response->successful()) {
-        return redirect()->route('orders.index')->with('success', 'Pesanan selesai.');
-    }
-
-    return back()->with('error', 'Gagal menyelesaikan pesanan');
-})->name('orders.finish');
-
-Route::get('/restock-requests', function () {
-    $token = session('token');
-    if (!$token) {
-        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
-    }
-
-    $baseUrl = rtrim(env('GOLANG_API_URL'), '/');
-    $headers = [
-        'Authorization' => 'Bearer ' . $token,
-        'Accept' => 'application/json'
-    ];
-
-    try {
-        $restockRequests = Http::withHeaders($headers)->get("{$baseUrl}/restock-requests")->json('data') ?? [];
-        usort($restockRequests, fn($a, $b) => $a['product_id'] <=> $b['product_id']);
-    } catch (\Exception $e) {
-        return view('admin.restock-requests')->withErrors(['API error: ' . $e->getMessage()]);
-    }
-
-    return view('admin.restock-requests', compact('restockRequests'));
-})->name('restock.requests');
-
-Route::post('/restock-requests/{id}/read', function ($id) {
-    $token = session('token');
-
-    $response = Http::withToken($token)->put(env('GOLANG_API_URL') . "restock-requests/{$id}/read");
-
-    if ($response->successful()) {
-        return redirect()->route('restock.requests')->with('success', 'Berhasil.');
-    }
-
-    return back()->with('error', 'Gagal');
-})->name('requests.read');
-
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATION ROUTES
+|--------------------------------------------------------------------------
+| Halaman login, logout, dan default redirect root.
+*/
+Route::get('/', fn () => redirect()->route('login'));
 Route::get('/login', [LoginController::class, 'index'])->name('login');
-Route::post('/login', function (Request $request) {
-    $request->validate([
-        'username' => 'required|string',
-        'password' => 'required|string',
-        'role' => 'required|in:admin,employee',
-    ]);
-
-    $payload = [
-        'username' => $request->input('username'),
-        'password' => $request->input('password'),
-        'role' => $request->input('role'),
-    ];
-
-    try {
-        $response = Http::post(env('GOLANG_API_URL') . 'login', $payload);
-
-        if ($response->successful()) {
-            $data = $response->json();
-
-            // Simpan token dan info user ke session
-            session([
-                'token' => $data['token'],
-                'user' => $data['user'],
-                'role' => $data['role']
-            ]);
-
-            return redirect('/admin/dashboard')->with('success', 'Berhasil login sebagai ' . $data['role']);
-        }
-
-        return back()->withErrors(['Gagal login: ' . $response->json('error') ?? 'Tidak diketahui']);
-    } catch (\Exception $e) {
-        return back()->withErrors(['Gagal terhubung ke API: ' . $e->getMessage()]);
-    }
-})->name('login.authenticate');
-
-Route::get('/admin/register', [LoginController::class, 'adminRegister'])->name('admin.register');
-Route::post('/admin/register', [LoginController::class, 'doAdminRegister'])->name('admin.register.do');
-
+Route::post('/login', [LoginController::class, 'authenticate'])->name('login.authenticate');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-
-// Route::get('/login', [LoginController::class, 'index'])->name('login');
-// Route::post('/login', [LoginController::class, 'authenticate'])->name('login.authenticate');
-// Route::get('/regis', [LoginController::class, 'register'])->name('register');
-// Route::post('/register', [LoginController::class, 'doRegister'])->name('register.do');
-
-// Route::get('/products', [ProductController::class, 'index']);
-// Route::get('/productss', [ProductController::class, 'index1']);
-// Route::get('/admin/dashboard', function () {
-//     return view('admin.dashboard');
-// });
-
-// Route::post('/logout', function () {
-//     Auth::logout();
-//     return redirect('/'); // arahkan ke halaman awal
-// })->name('logout');
-
-Route::get('/admin/charts', function () {
-    return view('admin.charts');
+/*
+|--------------------------------------------------------------------------
+| ACCOUNT ROUTE (khusus user yang sudah login)->masih blom jelas fungsinya apa karena view  account.blade.php blom ada
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['check.login', 'check.token'])->group(function () {
+    Route::get('/account', [DashboardController::class, 'account'])->name('account');
 });
 
-Route::get('/admin/dashboard', function () {
-    $token = session('token');
-    if (!$token) {
-        return redirect('/login')->with('error', 'Silakan login terlebih dahulu');
-    }
+/*
+|--------------------------------------------------------------------------
+| ADMIN PANEL ROUTES (hanya untuk admin) ADMIN ONLY
+|--------------------------------------------------------------------------
+| Middleware: check.login, check.token, check.role:admin
+| Prefix: /admin untuk dashboard
+*/
+//untuk midlleware check.login, check.token, dan check.role:admin lihat di bootstrap/app.php dan app/Http/Middleware
+Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD ROUTES
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('admin')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('/account', [DashboardController::class, 'account'])->name('admin.account');
+        Route::get('/charts', fn () => view('admin.charts'));
+    });
 
-    $baseUrl = rtrim(env('GOLANG_API_URL'), '/');
-    $headers = [
-        'Authorization' => 'Bearer ' . $token,
-        'Accept' => 'application/json'
-    ];
+    /*
+    |--------------------------------------------------------------------------
+    | EMPLOYEE MANAGEMENT ROUTES
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/employee/register', [LoginController::class, 'employeeRegister'])->name('employee.register');
+    Route::post('/employee/register', [LoginController::class, 'doEmployeeRegister'])->name('employee.register.do');
 
-    try {
-        $pendingOrders = Http::withHeaders($headers)->get("{$baseUrl}/orders/all/pending")->json('data') ?? [];
-        usort($pendingOrders, fn($a, $b) => $a['order']['id'] <=> $b['order']['id']);
+    /*
+    |--------------------------------------------------------------------------
+    | PRODUCTS ROUTES
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+    Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
 
-        $sales = Http::withHeaders($headers)->get("{$baseUrl}/stats/sales")->json('data') ?? [];
-        usort($sales, fn($a, $b) => strtotime($a['month']) <=> strtotime($b['month']));
+    /*
+    |--------------------------------------------------------------------------
+    | CATEGORY ROUTES
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
 
-        $lowStocks = Http::withHeaders($headers)->get("{$baseUrl}/stats/lowstocks")->json('data') ?? [];
-        usort($lowStocks, fn($a, $b) => $a['stock'] <=> $b['stock']);
+    /*
+    |--------------------------------------------------------------------------
+    | RESTOCK-REQUEST ROUTES
+    |--------------------------------------------------------------------------
+    */
 
-        $restockRequests = Http::withHeaders($headers)->get("{$baseUrl}/restock-requests")->json('data') ?? [];
-        usort($restockRequests, fn($a, $b) => $a['id'] <=> $b['id']);
+    Route::get('/restock-requests', [RestockRequestController::class, 'index'])->name('restock.requests');
+    Route::post('/restock-requests/{id}/read', [RestockRequestController::class, 'markAsRead'])->name('requests.read');
+});
+Route::middleware(['check.login', 'check.token', 'check.role:employee'])->group(function () {
+        /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD ROUTES
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('employee')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'employeeindex'])->name('employee.dashboard');
+    });
+});
 
-    } catch (\Exception $e) {
-        return view('admin.dashboard')->withErrors(['API error: ' . $e->getMessage()]);
-    }
+/*
+|--------------------------------------------------------------------------
+| ORDER ROUTES (Admin, Employee)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['check.login', 'check.token', 'check.role:admin,employee'])->group(function () {
+    Route::get('/orders/all', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
+    Route::get('/orders/{id}', [OrderController::class, 'showemployee'])->name('orders.showemployee');
+    Route::get('/orders/status/{status}', [OrderController::class, 'getByStatus'])->name('orders.status');
 
-    $pendingOrders = array_slice($pendingOrders, 0, 15);
-        $restockRequests = array_slice($restockRequests, 0, 15);
-        $lowStocks = array_slice($lowStocks, 0, 15);
+    Route::post('/orders/{id}/finish', function ($id) {
+        $token = session('token');
+        $response = Http::withToken($token)->put(env('GOLANG_API_URL') . "orders/{$id}/finish");
 
-    return view('admin.dashboard', compact('pendingOrders', 'sales', 'lowStocks', 'restockRequests'));
-})->name('dashboard');
+        if ($response->successful()) {
+            return redirect()->route('orders.index')->with('success', 'Pesanan selesai.');
+        }
 
-
+        return back()->with('error', 'Gagal menyelesaikan pesanan');
+    })->name('orders.finish');
+});

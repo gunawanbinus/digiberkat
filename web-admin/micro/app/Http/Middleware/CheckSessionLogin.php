@@ -17,10 +17,11 @@ class CheckSessionLogin
 
     public function handle($request, Closure $next)
     {
-        if (!Session::has('user')) {
+        if (!Session::has('api_token')) {
             return redirect()->route('login')->withErrors('Silakan login terlebih dahulu.');
         }
 
         return $next($request);
     }
 }
+// check bootstrap/app.php

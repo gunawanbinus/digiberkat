@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Redirect;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
@@ -19,13 +20,13 @@ class LoginController extends Controller
     {
         $this->apiBaseUrl = config('services.golang_api.url');
 
-        // Load positions when controller is instantiated
-        $this->loadPositions();
+        // $this->loadPositions();
     }
 
     public function index()
     {
         return view('login');
+        // return view('auth.login');
     }
 
     public function adminRegister()
@@ -33,8 +34,18 @@ class LoginController extends Controller
         return view('admin.register');
     }
 
+    // public function employeeRegister()
+    // {
+    //     return view('employee.register', [
+    //         'positions' => $this->positions
+    //     ]);
+    // }
     public function employeeRegister()
     {
+        if (!isset($this->positions)) {
+            $this->loadPositions();
+        }
+
         return view('employee.register', [
             'positions' => $this->positions
         ]);
@@ -215,13 +226,18 @@ class LoginController extends Controller
     /**
      * Get the appropriate dashboard route based on user role
      */
-    private function getDashboardRoute($role)
+    private function getDashboardRoute(string $role): string
     {
-        return match($role) {
-            'admin', 'employee' => 'dashboard', // ini lebih ringkas
-            default => 'home',
-        };
-}
+        try {
+            return match($role) {
+                'admin' => Route::has('admin.dashboard') ? 'admin.dashboard' : 'dashboard',
+                'employee' => Route::has('employee.dashboard') ? 'employee.dashboard' : 'dashboard',
+                default => 'dashboard'
+            };
+        } catch (\Exception $e) {
+            return 'dashboard'; // Fallback jika terjadi error apapun
+        }
+    }
 
 
 

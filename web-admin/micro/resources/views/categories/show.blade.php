@@ -1,139 +1,321 @@
 @extends('admin')
 
-@section('title', 'Produk dalam Kategori: ' . $category['name'])
+@section('title', 'Produk dalam Kategori: ' . ($category['name'] ?? 'Kategori Tidak Ditemukan'))
 
 @section('content')
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Produk: {{ $category['name'] }}</h2>
+    <h2><i class="fas fa-boxes me-2"></i>Produk: {{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
   </div>
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <p class=\"text-muted\">{{ $category['description'] }}</p>
-  </div>
-  <p class="text-muted small">Klik pada kepala tabel untuk mengurutkan berdasarkan kolom. Klik pada produk untuk mengedit.</p>
 
-  <div class="table-responsive">
-    <table class="table table-bordered table-hover" id="productTable">
-      <thead class="table-light">
-        <tr>
-          <th>ID</th>
-          <th>Gambar</th>
-          <th>Nama</th>
-          <th>Varian</th>
-          <th>Harga Normal</th>
-          <th>Harga Diskon</th>
-          <th>Stok</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($products as $product)
-          @if($product['is_varians'])
-            @foreach($product['variants'] as $variant)
-              <tr onclick="location.href='/products/{{ $product['id'] }}'" style="cursor: pointer;">
-                <td>{{ $product['id'] }}</td>
-                <td>
-                  <img src="{{ $product['thumbnails'][0] ?? '' }}" width="50">
-                </td>
-                <td>{{ $product['name'] }}</td>
-                <td>{{ $variant['name'] }}</td>
-                <td>Rp {{ number_format($variant['price'], 0, ',', '.') }}</td>
-                <td>
-                  @if($variant['is_discounted'] && $variant['discount_price'])
-                    <span class="text-danger">Rp {{ number_format($variant['discount_price'], 0, ',', '.') }}</span>
-                  @else
-                    -
-                  @endif
-                </td>
-                <td>{{ $variant['stock'] }}</td>
-              </tr>
-            @endforeach
-          @else
-            <tr onclick="location.href='/products/{{ $product['id'] }}'" style="cursor: pointer;">
-              <td>{{ $product['id'] }}</td>
-              <td>
-                <img src="{{ $product['thumbnails'][0] ?? '' }}" width="50">
-              </td>
-              <td>{{ $product['name'] }}</td>
-              <td><span class="badge bg-secondary">-</span></td>
-              <td>Rp {{ number_format($product['price'], 0, ',', '.') }}</td>
-              <td>
-                @if($product['is_discounted'] && $product['discount_price'])
-                  <span class="text-danger">Rp {{ number_format($product['discount_price'], 0, ',', '.') }}</span>
-                @else
-                  -
-                @endif
-              </td>
-              <td>{{ $product['stock'] }}</td>
+  @isset($category['description'])
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <p class="text-muted">{{ $category['description'] }}</p>
+  </div>
+  @endisset
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="productTable">
+          <thead class="table-light">
+            <tr>
+              <th class="text-center">ID</th>
+              <th class="text-center">Gambar</th>
+              <th>Nama</th>
+              <th>Varian</th>
+              <th class="text-end">Harga Normal</th>
+              <th class="text-end">Harga Diskon</th>
+              <th class="text-center">Stok</th>
             </tr>
-          @endif
-        @empty
-          <tr>
-            <td colspan="7" class="text-center">Tidak ada produk ditemukan dalam kategori ini.</td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            @forelse($products ?? [] as $product)
+              @if($product['is_varians'] ?? false)
+                @foreach($product['variants'] ?? [] as $variant)
+                  <tr onclick="window.location='/products/{{ $product['id'] }}'" style="cursor: pointer;">
+                    <td class="text-center fw-bold">#{{ $product['id'] }}</td>
+                    <td class="text-center">
+                      <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
+                           class="img-thumbnail rounded" width="50"
+                           alt="{{ $product['name'] }}"
+                           onerror="this.src='{{ asset('images/default-product.png') }}'">
+                    </td>
+                    <td>{{ $product['name'] }}</td>
+                    <td>
+                      <span class="badge bg-primary">{{ $variant['name'] }}</span>
+                    </td>
+                    <td class="text-end" data-order="{{ $variant['price'] }}">
+                      Rp{{ number_format($variant['price'], 0, ',', '.') }}
+                    </td>
+                    <td class="text-end" data-order="{{ $variant['discount_price'] ?? 0 }}">
+                      @if($variant['is_discounted'] ?? false && ($variant['discount_price'] ?? false))
+                        <span class="text-danger fw-bold">Rp{{ number_format($variant['discount_price'], 0, ',', '.') }}</span>
+                      @else
+                        <span class="text-muted">-</span>
+                      @endif
+                    </td>
+                    <td class="text-center" data-order="{{ $variant['stock'] }}">
+                      @if($variant['stock'] > 0)
+                        <span class="badge bg-success">{{ $variant['stock'] }}</span>
+                      @else
+                        <span class="badge bg-danger">Habis</span>
+                      @endif
+                    </td>
+                  </tr>
+                @endforeach
+              @else
+                <tr onclick="window.location='/products/{{ $product['id'] }}'" style="cursor: pointer;">
+                  <td class="text-center fw-bold">#{{ $product['id'] }}</td>
+                  <td class="text-center">
+                    <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
+                         class="img-thumbnail rounded" width="50"
+                         alt="{{ $product['name'] }}"
+                         onerror="this.src='{{ asset('images/default-product.png') }}'">
+                  </td>
+                  <td>{{ $product['name'] }}</td>
+                  <td><span class="badge bg-secondary">-</span></td>
+                  <td class="text-end" data-order="{{ $product['price'] }}">
+                    Rp{{ number_format($product['price'], 0, ',', '.') }}
+                  </td>
+                  <td class="text-end" data-order="{{ $product['discount_price'] ?? 0 }}">
+                    @if($product['is_discounted'] ?? false && ($product['discount_price'] ?? false))
+                      <span class="text-danger fw-bold">Rp{{ number_format($product['discount_price'], 0, ',', '.') }}</span>
+                    @else
+                      <span class="text-muted">-</span>
+                    @endif
+                  </td>
+                  <td class="text-center" data-order="{{ $product['stock'] }}">
+                    @if($product['stock'] > 0)
+                      <span class="badge bg-success">{{ $product['stock'] }}</span>
+                    @else
+                      <span class="badge bg-danger">Habis</span>
+                    @endif
+                  </td>
+                </tr>
+              @endif
+            @empty
+              <tr>
+                <td colspan="7" class="text-center py-5">
+                  <div class="d-flex flex-column align-items-center">
+                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted mb-2">Tidak ada produk</h5>
+                    <p class="text-muted small">Belum ada produk dalam kategori ini</p>
+                    <a href="{{ route('products.create') }}" class="btn btn-sm btn-primary mt-2">
+                      <i class="fas fa-plus me-1"></i> Tambah Produk
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
+@endsection
+
+@section('scripts')
+<!-- DataTables Resources -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
+<!-- Tambahkan library ini -->
+{{-- <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.copy.min.js"></script> --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
 
 <script>
-function sortTable(n) {
-    const table = document.getElementById("productTable");
-    let switching = true, dir = "asc", switchcount = 0;
+$(document).ready(function() {
+    // Initialize DataTables only if table has data
+    if ($('#productTable tbody tr').not('.empty-row').length > 0) {
+        $('#productTable').DataTable({
+            order: [[6, 'asc']], // Default sort by stock
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/id.json',
+                search: "_INPUT_",
+                searchPlaceholder: "Cari produk...",
+                buttons: {
+                    excel: 'Excel',
+                    print: 'Print'
+                    // ,copy: 'Salin'
+                }
+            },
+            dom: '<"row mb-3"<"col-sm-12 col-md-4"l><"col-sm-12 col-md-4"B><"col-sm-12 col-md-4"f>>rt<"row mt-3"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            buttons: [
+                {
+                    extend: 'excel',
+                    text: '<i class="fas fa-file-excel me-2"></i> Excel',
+                    className: 'btn btn-success btn-sm',
+                    exportOptions: {
+                        columns: [0, 2, 3, 4, 5],
+                        format: {
+                            body: function(data, row, column, node) {
+                                const $node = $(node);
+                                const rawHtml = $node.html() || '';
 
-    while (switching) {
-        switching = false;
-        const rows = table.rows;
+                                // Bersihkan semua tag HTML
+                                const cleanText = rawHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+                                // Kolom ID (index 0): hilangkan tanda '#'
+                                if (column === 0) {
+                                    return cleanText.replace(/^#/, '');
+                                }
+                                // Kolom Harga Normal (index 3) dan Diskon (index 4)
+                                if (column === 3 || column === 4) {
+                                    const numeric = cleanText.replace(/[^\d]/g, '');
+                                    return numeric ? parseInt(numeric) : '-';
+                                }
 
-        for (let i = 1; i < (rows.length - 1); i++) {
-            let shouldSwitch = false;
-            const x = rows[i].getElementsByTagName("TD")[n];
-            const y = rows[i + 1].getElementsByTagName("TD")[n];
+                                // Kolom Varian (index 2) → jika "-" badge, ubah ke "-"
+                                if (column === 2 && (cleanText === '-' || cleanText === '')) {
+                                    return '-';
+                                }
 
-            let xContent = x.innerText || x.textContent;
-            let yContent = y.innerText || y.textContent;
+                                return cleanText;
+                            }
+                        }
+                    }
+                },
 
-            const xNum = parseFloat(xContent.replace(/[^\d.]/g, '')) || 0;
-            const yNum = parseFloat(yContent.replace(/[^\d.]/g, '')) || 0;
-
-            const compareResult = (!isNaN(xNum) && !isNaN(yNum)) ?
-                (dir === "asc" ? xNum > yNum : xNum < yNum) :
-                (dir === "asc" ? xContent.toLowerCase() > yContent.toLowerCase() : xContent.toLowerCase() < yContent.toLowerCase());
-
-            if (compareResult) {
-                shouldSwitch = true;
-                break;
+                {
+                    extend: 'print',
+                    text: '<i class="fas fa-print me-2"></i> Print',
+                    className: 'btn btn-info btn-sm',
+                    exportOptions: {
+                        columns: [0, 2, 3, 4, 5]
+                    },
+                    customize: function(win) {
+                        $(win.document.body).find('table').addClass('table-bordered');
+                        $(win.document.body).find('h1').css('text-align','center');
+                    }
+                },
+                // {
+                //     extend: 'copy',
+                //     text: '<i class="fas fa-copy me-2"></i> Salin',
+                //     className: 'btn btn-dark btn-sm',
+                //     exportOptions: {
+                //         columns: [0, 2, 3, 4, 5, 6]
+                //     }
+                // }
+            ],
+            columnDefs: [
+                {
+                    orderable: true,
+                    targets: [0, 2, 3, 4, 5, 6]
+                },
+                {
+                    orderable: false,
+                    targets: [1]
+                },
+                {
+                    className: 'text-center',
+                    targets: [0, 1, 6]
+                },
+                {
+                    className: 'text-end',
+                    targets: [4, 5]
+                },
+                {
+                    type: 'num',
+                    targets: [4, 5],
+                    render: function(data, type, row) {
+                        if (type === 'sort') {
+                            return data.replace('Rp', '').replace(/\./g, '');
+                        }
+                        return data;
+                    }
+                },
+                {
+                    className: 'align-middle',
+                    targets: '_all'
+                }
+            ],
+            responsive: true,
+            initComplete: function() {
+                $('.dataTables_filter input').addClass('form-control form-control-sm');
+                $('.dataTables_length select').addClass('form-select form-select-sm');
             }
-        }
-
-        if (shouldSwitch) {
-            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-            switching = true;
-            switchcount++;
-        } else if (switchcount === 0 && dir === "asc") {
-            dir = "desc";
-            switching = true;
-        }
+        });
     }
-}
-
-window.onload = function () {
-    sortTable(6); // sort by stock
-}
+});
 </script>
 
-    <!-- jQuery dan DataTables JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#productTable').DataTable({
-                order: [[6, 'asc']],
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-                }
-            });
-        });
-    </script>
+<style>
+/* Custom Styling */
+#productTable thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+}
 
+#productTable tbody tr {
+    transition: all 0.2s ease;
+}
+
+#productTable tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.img-thumbnail {
+    border-radius: 0.375rem;
+    padding: 0.25rem;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    max-width: 100%;
+    height: auto;
+}
+
+.badge {
+    padding: 0.35em 0.65em;
+    font-size: 0.75em;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.dataTables_wrapper .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.dataTables_wrapper .dataTables_filter {
+    text-align: right;
+}
+
+.dataTables_wrapper .dataTables_length {
+    text-align: left;
+}
+
+.dt-buttons {
+    display: flex;
+    gap: 5px;
+    margin-top: 15px;
+}
+
+@media (max-width: 768px) {
+    .dataTables_wrapper .row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_length {
+        text-align: left;
+    }
+
+    .dt-buttons {
+        justify-content: flex-start;
+    }
+}
+</style>
 @endsection
