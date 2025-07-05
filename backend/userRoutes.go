@@ -3959,20 +3959,9 @@ func RestockRequestRoutes(r *gin.Engine, db *sql.DB) {
 // ++++++++++++++++++++++++
 func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
 	rows, err := db.Query(`
-		SELECT
-			rr.id AS request_id,
-			p.id AS product_id,
-			p.name AS product_name,
-			COALESCE(pi.thumbnail_url, '') AS thumbnail,
-			pv.id AS variant_id,
-			pv.name AS variant_name,
-			COALESCE(pv.stock, p.stock) AS stock
+		SELECT rr.id, rr.product_id, rr.product_variant_id
 		FROM restock_requests rr
-		JOIN products p ON rr.product_id = p.id
-		LEFT JOIN product_variants pv ON rr.product_variant_id = pv.id
-		LEFT JOIN product_images pi ON p.id = pi.product_id
 		WHERE rr.status = 'unread'
-		GROUP BY p.id, pv.id
 		ORDER BY rr.created_at ASC
 	`)
 	if err != nil {
@@ -3982,21 +3971,60 @@ func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
 	defer rows.Close()
 
 	type RestockDisplay struct {
-		RequestID   int    `json:"id"`
-		ProductID   int    `json:"product_id"`
-		ProductName string `json:"product_name"`
-		Thumbnail   string `json:"thumbnail"`
-		VariantID   int    `json:"variant_id"`
-		VariantName string `json:"variant_name"`
-		Stock       int    `json:"stock"`
+		RequestID   int     `json:"id"`
+		ProductID   int     `json:"product_id"`
+		ProductName string  `json:"product_name"`
+		Thumbnail   string  `json:"thumbnail"`
+		VariantID   *int    `json:"variant_id,omitempty"`
+		VariantName *string `json:"variant_name,omitempty"`
+		Stock       int     `json:"stock"`
 	}
 
 	var results []RestockDisplay
+
 	for rows.Next() {
-		var r RestockDisplay
-		if err := rows.Scan(&r.RequestID, &r.ProductID, &r.ProductName, &r.Thumbnail, &r.VariantID, &r.VariantName, &r.Stock); err != nil {
+		var (
+			requestID          int
+			productID          int
+			productVariantID   sql.NullInt64
+		)
+		if err := rows.Scan(&requestID, &productID, &productVariantID); err != nil {
 			continue
 		}
+
+		product, err := getSingleProductWithVariantsAndImages(db, productID)
+		if err != nil {
+			continue
+		}
+
+		stockValue := 0
+		if product.Stock != nil {
+			stockValue = *product.Stock
+		}
+		r := RestockDisplay{
+			RequestID:   requestID,
+			ProductID:   product.ID,
+			ProductName: product.Name,
+			Thumbnail:   "", // default
+			Stock:       stockValue, // fallback if no variant
+		}
+
+		if len(product.Thumbnails) > 0 {
+			r.Thumbnail = product.Thumbnails[0]
+		}
+
+		if productVariantID.Valid {
+			variantID := int(productVariantID.Int64)
+			r.VariantID = &variantID
+			for _, v := range product.Variants {
+				if v.ID == variantID {
+					r.VariantName = &v.Name
+					r.Stock = v.Stock
+					break
+				}
+			}
+		}
+
 		results = append(results, r)
 	}
 
@@ -4005,6 +4033,7 @@ func GetUnreadRestockRequests(c *gin.Context, db *sql.DB) {
 		"data":    results,
 	})
 }
+
 
 // ++++++++++++++++++++++++
 //  RestockRequest CREATE
