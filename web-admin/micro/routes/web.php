@@ -125,4 +125,9 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin,employee'])->
         return back()->with('error', 'Gagal menyelesaikan pesanan');
     })->name('orders.finish');
 
+    // routes/web.php
+     // Rute POST untuk menerima ID pesanan dari pemindaian QR
+    Route::post('/orders/scan', [OrderController::class, 'scanOrder'])->name('orders.scan');
+    // Rute untuk menampilkan detail pesanan di halaman employee (jika Anda ingin mengarahkan langsung setelah scan)
+    Route::get('/orders/{id}/employee-detail', [OrderController::class, 'showemployee'])->name('orders.showemployee');
 });
