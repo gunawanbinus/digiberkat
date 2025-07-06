@@ -50,7 +50,7 @@
               <div class="row align-items-center">
                 <div class="col">
                   <div class="text-xs fw-bold text-success text-uppercase mb-1">Pesanan Bln. Ini</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">1</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">1 Pesanan</div>
                 </div>
                 <div class="col-auto">
                   <i class="fas fa-shopping-cart fa-2x text-success"></i>
@@ -225,7 +225,7 @@
                       </small>
                     </div>
                     <button class="btn btn-sm btn-success">
-                      <i class="fas fa-check me-1"></i> Proses
+                      <i class="fas fa-check me-1"></i> Dibaca
                     </button>
                   </div>
                 </a>

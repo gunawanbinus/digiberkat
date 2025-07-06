@@ -8,10 +8,10 @@
                 <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
                     <h2 class="mb-0 fw-bold">{{ $data['name'] }}</h2>
                     <div>
-                        <a href="{{ route('products.create') }}" class="btn btn-primary rounded-pill px-4">
+                        <a href="{{ route('products.create') }}" class="btn btn-primary">
                             <i class="fas fa-edit me-2"></i> Edit
                         </a>
-                        <a href="{{ route('products.create') }}" class="btn btn-danger rounded-pill px-4">
+                        <a href="{{ route('products.create') }}" class="btn btn-danger">
                             <i class="fas fa-trash me-2"></i> Hapus
                         </a>
                     </div>

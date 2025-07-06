@@ -34,7 +34,7 @@ type ProductsBasicModel struct {
 	ID            int       `json:"id"`
 	CategoryID    int       `json:"category_id"`
 	Name          string    `json:"name"`
-	Description   string    `json:"description"`
+	Description   *string   `json:"description"`
 	IsVarians     bool      `json:"is_varians"`
 	IsDiscounted  bool      `json:"is_discounted"`
 	DiscountPrice *int      `json:"discount_price"`

@@ -1342,7 +1342,7 @@ func getCartItems(db *sql.DB, cartID int) ([]CartItemModel, error) {
 func getSingleProductWithVariantsAndImages(db *sql.DB, productID int) (ProductsBasicModel, error) {
 	var product ProductsBasicModel
 	err := db.QueryRow(`
-        SELECT id, category_id, name, description,
+        SELECT id, category_id, name, search_vector,
                is_varians, is_discounted, discount_price, price, stock
         FROM products WHERE id = ?`, productID).
 		Scan(&product.ID, &product.CategoryID, &product.Name, &product.Description,

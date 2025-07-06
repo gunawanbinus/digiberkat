@@ -9,10 +9,10 @@
       <h2><i class="fas fa-boxes me-2"></i>{{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
     </div>
     <div>
-      <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
         <i class="fas fa-edit me-2"></i>Edit Kategori
       </button>
-      <button class="btn btn-danger rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+      <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
         <i class="fas fa-trash me-2"></i>Hapus Kategori
       </button>
     </div>
