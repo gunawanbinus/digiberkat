@@ -31,7 +31,7 @@
                         <a class="nav-link" href="{{ route('products.index') }}">All Products</a>
                         <a class="nav-link" href="{{ route('categories.index') }}">By Category</a>
                         <a class="nav-link" href="#">Low Stock</a>
-                        <a class="nav-link" href="#">Add New</a>
+                        <a class="nav-link" href="{{ route('products.create') }}">Add New</a>
                     </nav>
                 </div>
 

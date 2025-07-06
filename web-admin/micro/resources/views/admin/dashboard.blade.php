@@ -163,7 +163,7 @@
           <div class="card shadow-sm h-100">
             <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
               <h6 class="mb-0 fw-bold">Pesanan Tertunda</h6>
-              <a href="{{ route('orders.status', 'pending') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+              <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>
             <div class="card-body p-0">
               <div class="list-group list-group-flush">

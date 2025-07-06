@@ -10,6 +10,9 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\RestockRequestController;
+use App\Http\Controllers\AIController;
+use App\Http\Controllers\ImageKitUploadController;
+use App\Http\Controllers\ProductWizardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +52,10 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(fun
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::get('/account', [DashboardController::class, 'account'])->name('admin.account');
         Route::get('/charts', fn () => view('admin.charts'));
+        Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+        Route::post('/products/upload/wizard', [ProductWizardController::class, 'uploadImage'])->name('products.upload');
+        Route::post('/products/search-vector/wizard', [ProductWizardController::class, 'generateSearchVector'])->name('products.search_vector');
+        Route::post('/products', [ProductWizardController::class, 'storeProduct'])->name('products.store');
     });
 
     /*
@@ -65,8 +72,7 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(fun
     |--------------------------------------------------------------------------
     */
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
-    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+
     Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
 
     /*
@@ -105,7 +111,7 @@ Route::middleware(['check.login', 'check.token', 'check.role:employee'])->group(
 Route::middleware(['check.login', 'check.token', 'check.role:admin,employee'])->group(function () {
     Route::get('/orders/all', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-    Route::get('/orders/{id}', [OrderController::class, 'showemployee'])->name('orders.showemployee');
+    Route::get('/orders/{id}/employee', [OrderController::class, 'showemployee'])->name('orders.showemployee');
     Route::get('/orders/status/{status}', [OrderController::class, 'getByStatus'])->name('orders.status');
 
     Route::post('/orders/{id}/finish', function ($id) {
@@ -118,4 +124,5 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin,employee'])->
 
         return back()->with('error', 'Gagal menyelesaikan pesanan');
     })->name('orders.finish');
+
 });

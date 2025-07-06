@@ -39,9 +39,15 @@ return [
         'url' => env('GOLANG_API_URL'),
     ],
 
+    'huggingface' => [
+        'token' => env('HF_TOKEN'),
+        'endpoint' => env('HF_ENDPOINT'),
+        'model' => env('HF_MODEL'),
+    ],
     'imagekit' => [
         'private_key' => env('IMAGEKIT_PRIVATE_KEY'),
-        'url_endpoint' => env('IMAGEKIT_URL_ENDPOINT'),
+        'upload_url' => env('IMAGEKIT_UPLOAD_URL'),
     ],
+
 
 ];
