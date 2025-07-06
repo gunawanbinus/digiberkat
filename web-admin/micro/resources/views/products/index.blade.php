@@ -65,12 +65,15 @@
                           @endif
                         </td>
                         <td class="d-flex align-items-center gap-2">
-                          <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                          <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
                             <i class="fas fa-eye"></i>
                           </a>
                           <a href="/products/{{ $product['id'] }}?variant={{ $variant['id'] }}"
                              class="btn btn-sm btn-outline-primary" title="Edit">
                             <i class="fas fa-edit"></i>
+                          </a>
+                          <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
+                            <i class="fas fa-trash"></i>
                           </a>
                         </td>
                       </tr>
@@ -105,12 +108,15 @@
                         @endif
                       </td>
                       <td class="d-flex align-items-center gap-2">
-                        <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
                           <i class="fas fa-eye"></i>
                         </a>
                         <a href="/products/{{ $product['id'] }}"
                            class="btn btn-sm btn-outline-primary" title="Edit">
                           <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
+                          <i class="fas fa-trash"></i>
                         </a>
                       </td>
                     </tr>

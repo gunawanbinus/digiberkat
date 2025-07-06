@@ -8,7 +8,7 @@
     <div class="col-12">
       <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0 fw-bold">Dashboard</h2>
-        <div class="d-flex">
+        <!--<div class="d-flex">
           <div class="dropdown me-2">
             <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="timeRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
               <i class="fas fa-calendar-alt me-2"></i>Bulan Ini
@@ -23,7 +23,7 @@
           <button class="btn btn-primary" onclick="window.location.href = '{{ url('admin/dashboard') }}'">
             <i class="fas fa-sync-alt me-2"></i>Refresh
           </button>
-        </div>
+        </div>-->
       </div>
 
       <!-- Stats Cards -->
@@ -33,8 +33,8 @@
             <div class="card-body">
               <div class="row align-items-center">
                 <div class="col">
-                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Pendapatan</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">Rp12,450,000</div>
+                  <div class="text-xs fw-bold text-primary text-uppercase mb-1">Penjualan Bln. Ini</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">Rp65.000</div>
                 </div>
                 <div class="col-auto">
                   <i class="fas fa-wallet fa-2x text-primary"></i>
@@ -49,8 +49,8 @@
             <div class="card-body">
               <div class="row align-items-center">
                 <div class="col">
-                  <div class="text-xs fw-bold text-success text-uppercase mb-1">Total Pesanan</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">142</div>
+                  <div class="text-xs fw-bold text-success text-uppercase mb-1">Pesanan Bln. Ini</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">1</div>
                 </div>
                 <div class="col-auto">
                   <i class="fas fa-shopping-cart fa-2x text-success"></i>
@@ -66,7 +66,7 @@
               <div class="row align-items-center">
                 <div class="col">
                   <div class="text-xs fw-bold text-warning text-uppercase mb-1">Perlu Restok</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">15 Produk</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">2 Produk</div>
                 </div>
                 <div class="col-auto">
                   <i class="fas fa-box-open fa-2x text-warning"></i>
@@ -82,7 +82,7 @@
               <div class="row align-items-center">
                 <div class="col">
                   <div class="text-xs fw-bold text-danger text-uppercase mb-1">Belum Diproses</div>
-                  <div class="h5 mb-0 fw-bold text-gray-800">8</div>
+                  <div class="h5 mb-0 fw-bold text-gray-800">2 Pesanan</div>
                 </div>
                 <div class="col-auto">
                   <i class="fas fa-clock fa-2x text-danger"></i>

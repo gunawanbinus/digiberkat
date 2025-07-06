@@ -2983,7 +2983,7 @@ func GetNotificationByID(c *gin.Context, db *sql.DB) {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // =========================
-// Statistik untuk web admin
+// Khusus untuk web admin
 // =========================
 
 func StatRoutes(r *gin.Engine, db *sql.DB) {
@@ -2991,6 +2991,7 @@ func StatRoutes(r *gin.Engine, db *sql.DB) {
 
 	addRoute(statGroup, "GET", "/sales", []string{"admin"}, GetSalesPerMonth, db) // Lihat nominal penjualan per bulan dalam setahun terakhir
 	addRoute(statGroup, "GET", "/lowstocks", []string{"admin"}, GetLowStocks, db) // Lihat produk yang hampir atau sudah habis
+	addRoute(statGroup, "GET", "/employees", []string{"admin"}, GetEmployees, db) // Lihat semua akun karyawan
 }
 
 func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
@@ -3117,4 +3118,51 @@ func GetLowStocks(c *gin.Context, db *sql.DB) {
         "message": "✅ Berhasil mengambil data produk dengan stok rendah",
         "data":    products,
     })
+}
+
+func GetEmployees(c *gin.Context, db *sql.DB) {
+	rows, err := db.Query(`
+		SELECT id, username, thumbnail_url
+		FROM employees;
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar akun karyawan"})
+		return
+	}
+	defer rows.Close()
+
+	type EmployeeAccounts struct {
+		ID            int    `json:"id"`
+		Username      string `json:"username"`
+		ThumbnailURL  string `json:"thumbnail_url"`
+	}
+
+	var results []EmployeeAccounts
+
+	for rows.Next() {
+		var employees EmployeeAccounts
+		err := rows.Scan(
+			&employees.ID,
+			&employees.Username,
+			&employees.ThumbnailURL,
+		)
+		if err != nil {
+			continue
+		}
+
+		results = append(results, employees)
+	}
+
+	if len(results) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "⚠️ Data akun kosong",
+			"data":    []EmployeeAccounts{},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "✅ Berhasil mengambil data akun karyawan",
+		"data":    results,
+	})
 }

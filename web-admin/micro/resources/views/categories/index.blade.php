@@ -26,7 +26,6 @@
                             </div>
                             <div>
                                 <h5 class="mb-0 fw-semibold">{{ $category['name'] }}</h5>
-                                <small class="text-muted">12 produk</small> <!-- You can replace with actual count -->
                             </div>
                         </div>
                         <i class="bi bi-chevron-right text-muted"></i>

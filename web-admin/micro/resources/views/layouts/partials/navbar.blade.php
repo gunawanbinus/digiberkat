@@ -13,17 +13,17 @@
     </button>
 
     <!-- Search Form -->
-    <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+    <!--<form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
         <div class="input-group">
             <input class="form-control border-0 shadow-none" type="text" placeholder="Cari..." aria-label="Search">
             <button class="btn btn-light" type="button">
                 <i class="fas fa-search"></i>
             </button>
         </div>
-    </form>
+    </form>-->
 
     <!-- Navbar Right -->
-    <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
+    <ul class="navbar-nav ms-auto me-0 me-md-3 my-2 my-md-0">
         <!--<li class="nav-item dropdown ms-2">
             <a class="nav-link" href="#" id="themeToggle">
                 <i class="fas fa-moon"></i>
@@ -40,26 +40,10 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="navbarDropdown">
                 <li>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <i class="fas fa-user-circle me-2"></i> Profil
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <i class="fas fa-cog me-2"></i> Setelan
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item d-flex align-items-center" href="#">
-                        <i class="fas fa-history me-2"></i> Aktivitas
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="dropdown-item d-flex align-items-center w-100">
-                            <i class="fas fa-sign-out-alt me-2"></i> Logout
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
                         </button>
                     </form>
                 </li>
