@@ -4,7 +4,7 @@
     <!-- Navbar Brand -->
     <a class="navbar-brand ps-3 d-flex align-items-center" href="{{ url('admin/dashboard') }}">
         <i class="fas fa-shield-alt me-2"></i>
-        <span class="fw-bold">Admin Panel</span>
+        <span class="fw-bold">Admin Digiberkat</span>
     </a>
 
     <!-- Sidebar Toggle -->
@@ -15,7 +15,7 @@
     <!-- Search Form -->
     <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
         <div class="input-group">
-            <input class="form-control border-0 shadow-none" type="text" placeholder="Search..." aria-label="Search">
+            <input class="form-control border-0 shadow-none" type="text" placeholder="Cari..." aria-label="Search">
             <button class="btn btn-light" type="button">
                 <i class="fas fa-search"></i>
             </button>
@@ -24,11 +24,11 @@
 
     <!-- Navbar Right -->
     <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
-        <li class="nav-item dropdown ms-2">
+        <!--<li class="nav-item dropdown ms-2">
             <a class="nav-link" href="#" id="themeToggle">
-                <i class="fas fa-moon"></i> <!-- Default dark theme icon -->
+                <i class="fas fa-moon"></i>
             </a>
-        </li>
+        </li>-->
         <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="position-relative">
@@ -41,17 +41,17 @@
             <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="navbarDropdown">
                 <li>
                     <a class="dropdown-item d-flex align-items-center" href="#">
-                        <i class="fas fa-user-circle me-2"></i> Profile
+                        <i class="fas fa-user-circle me-2"></i> Profil
                     </a>
                 </li>
                 <li>
                     <a class="dropdown-item d-flex align-items-center" href="#">
-                        <i class="fas fa-cog me-2"></i> Settings
+                        <i class="fas fa-cog me-2"></i> Setelan
                     </a>
                 </li>
                 <li>
                     <a class="dropdown-item d-flex align-items-center" href="#">
-                        <i class="fas fa-history me-2"></i> Activity Log
+                        <i class="fas fa-history me-2"></i> Aktivitas
                     </a>
                 </li>
                 <li><hr class="dropdown-divider"></li>

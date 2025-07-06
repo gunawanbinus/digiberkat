@@ -3,63 +3,63 @@
     <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
         <div class="sb-sidenav-menu">
             <div class="nav">
-                <div class="sb-sidenav-menu-heading">Main</div>
+                <div class="sb-sidenav-menu-heading">Utama</div>
                 <a class="nav-link" href="{{ url('admin/dashboard') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
                     Dashboard
                 </a>
 
-                <div class="sb-sidenav-menu-heading">Management</div>
+                <div class="sb-sidenav-menu-heading">Manajemen</div>
                 <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseEmployee">
                     <div class="sb-nav-link-icon"><i class="fas fa-user-tie"></i></div>
-                    Employees
+                    Karyawan
                     <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                 </a>
                 <div class="collapse" id="collapseEmployee">
                     <nav class="sb-sidenav-menu-nested nav">
-                        <a class="nav-link" href="#">All Employee</a>
-                        <a class="nav-link" href="{{ route('employee.register')}}">Add New</a>
+                        <a class="nav-link" href="#">Semua Karyawan</a>
+                        <a class="nav-link" href="{{ route('employee.register')}}">Tambah Karyawan</a>
                     </nav>
                 </div>
                 <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseProduk">
                     <div class="sb-nav-link-icon"><i class="fas fa-box-open"></i></div>
-                    Products
+                    Produk
                     <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                 </a>
                 <div class="collapse" id="collapseProduk">
                     <nav class="sb-sidenav-menu-nested nav">
-                        <a class="nav-link" href="{{ route('products.index') }}">All Products</a>
-                        <a class="nav-link" href="{{ route('categories.index') }}">By Category</a>
-                        <a class="nav-link" href="#">Low Stock</a>
-                        <a class="nav-link" href="{{ route('products.create') }}">Add New</a>
+                        <a class="nav-link" href="{{ route('products.index') }}">Semua Produk</a>
+                        <a class="nav-link" href="{{ route('categories.index') }}">Berdasarkan Kategori</a>
+                        <a class="nav-link" href="#">Stok Rendah</a>
+                        <a class="nav-link" href="{{ route('products.create') }}">Tambah Produk</a>
                     </nav>
                 </div>
 
                 <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseKategori">
                     <div class="sb-nav-link-icon"><i class="fas fa-tags"></i></div>
-                    Categories
+                    Kategori
                     <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                 </a>
                 <div class="collapse" id="collapseKategori">
                     <nav class="sb-sidenav-menu-nested nav">
-                        <a class="nav-link" href="{{ route('categories.index') }}">All Categories</a>
-                        <a class="nav-link" href="#">Add New</a>
+                        <a class="nav-link" href="{{ route('categories.index') }}">Semua Kategori</a>
+                        <a class="nav-link" href="#">Tambah Kategori</a>
                     </nav>
                 </div>
 
                 <a class="nav-link" href="{{ route('orders.index') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-shopping-bag"></i></div>
-                    Orders
+                    Pesanan
                 </a>
                 <a class="nav-link" href="{{ route('restock.requests') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-arrow-rotate-left"></i></div>
-                    Restock Requests
+                    Permintaan Restok
                     <span class="badge bg-danger rounded-pill ms-2">3</span>
                 </a>
             </div>
         </div>
         <div class="sb-sidenav-footer">
-            <div class="small">Logged in as:</div>
+            <div class="small">Masuk sebagai:</div>
             {{ currentUser('username') ?? 'Guest' }} {{--Lihat bagian app/Helpers/helper.php--}}
         </div>
     </nav>

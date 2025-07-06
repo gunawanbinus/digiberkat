@@ -33,7 +33,7 @@
                   <th>Status</th>
                   <th class="text-end">Total</th>
                   <th class="text-center">Tanggal</th>
-                  <th class="text-center">Aksi</th>
+                  <th class="text-center">Tindakan</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,7 +271,7 @@ $(document).ready(function() {
                   <th>Status</th>
                   <th class="text-end">Total</th>
                   <th class="text-center">Tanggal</th>
-                  <th class="text-center">Aksi</th>
+                  <th class="text-center">Tindakan</th>
                 </tr>
               </thead>
               <tbody>

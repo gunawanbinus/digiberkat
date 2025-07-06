@@ -4,7 +4,7 @@
 <div class="container mt-4">
     <div class="card shadow">
         <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Tambah Produk (Wizard)</h4>
+            <h4 class="mb-0">Tambah Produk</h4>
         </div>
 
         <div class="card-body">
@@ -30,7 +30,7 @@
 
                         <div class="form-group mb-3">
                             <label for="description" class="form-label">Deskripsi</label>
-                            <textarea name="description" class="form-control" rows="3" required></textarea>
+                            <textarea name="description" class="form-control" rows="3"></textarea>
                         </div>
 
                         <div class="form-group mb-3">
@@ -120,14 +120,14 @@
                             <label for="productImages" class="form-label">Pilih Gambar</label>
                             <input type="file" class="form-control" id="productImages" accept="image/jpeg, image/png, image/svg+xml" multiple>
                             <div class="invalid-feedback" id="image-feedback"></div>
-                            <small class="text-muted">Gambar pertama akan digunakan untuk generate deskripsi otomatis (opsional)</small>
+                            <small class="text-muted">Gambar pertama akan digunakan untuk menghasilkan deskripsi otomatis (opsional)</small>
                         </div>
 
                         <div class="row mb-3" id="imagePreviewContainer">
                             </div>
 
                         <button type="button" id="uploadImageBtn" class="btn btn-primary mb-3 d-none" onclick="uploadToImageKit()">
-                            <i class="fas fa-upload"></i> Upload ke ImageKit
+                            <i class="fas fa-upload"></i> Upload
                         </button>
 
                         <div id="imageProcessing" class="alert alert-info mb-3 d-none">
@@ -140,7 +140,7 @@
                         </div>
 
                         <button type="button" id="generateAIBtn" class="btn btn-info mb-3 d-none" onclick="generateAIDescription()">
-                            <i class="fas fa-robot"></i> Generate Deskripsi AI (Opsional)
+                            <i class="fas fa-robot"></i> Hasilkan deskripsi AI (opsional)
                         </button>
 
                         <div id="aiProcessing" class="alert alert-info mb-3 d-none">
@@ -174,7 +174,7 @@
             const categoryId = document.querySelector('select[name="category_id"]').value;
             const isVariansChecked = document.getElementById('is_varians').checked;
 
-            if (!productName || !description || !categoryId) {
+            if (!productName || !categoryId) {
                 alert('Harap lengkapi Nama Produk, Deskripsi, dan Kategori.');
                 return;
             }

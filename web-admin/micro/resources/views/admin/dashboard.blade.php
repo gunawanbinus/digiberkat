@@ -81,7 +81,7 @@
             <div class="card-body">
               <div class="row align-items-center">
                 <div class="col">
-                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">Pesanan Tertunda</div>
+                  <div class="text-xs fw-bold text-danger text-uppercase mb-1">Belum Diproses</div>
                   <div class="h5 mb-0 fw-bold text-gray-800">8</div>
                 </div>
                 <div class="col-auto">
@@ -162,7 +162,7 @@
         <div class="col-lg-6 mb-4">
           <div class="card shadow-sm h-100">
             <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-              <h6 class="mb-0 fw-bold">Pesanan Tertunda</h6>
+              <h6 class="mb-0 fw-bold">Pesanan Belum Diproses</h6>
               <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
             </div>
             <div class="card-body p-0">

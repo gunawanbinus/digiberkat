@@ -6,6 +6,9 @@
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2><i class="fas fa-boxes me-2"></i>Produk: {{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
+    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+      <i class="fas fa-edit me-2"></i>Edit Kategori
+    </button>
   </div>
 
   @isset($category['description'])
@@ -15,101 +18,125 @@
   @endisset
 
   <div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="productTable">
-          <thead class="table-light">
-            <tr>
-              <th class="text-center">ID</th>
-              <th class="text-center">Gambar</th>
-              <th>Nama</th>
-              <th>Varian</th>
-              <th class="text-end">Harga Normal</th>
-              <th class="text-end">Harga Diskon</th>
-              <th class="text-center">Stok</th>
-            </tr>
-          </thead>
-          <tbody>
-            @forelse($products ?? [] as $product)
-              @if($product['is_varians'] ?? false)
-                @foreach($product['variants'] ?? [] as $variant)
-                  <tr onclick="window.location='/products/{{ $product['id'] }}'" style="cursor: pointer;">
-                    <td class="text-center fw-bold">#{{ $product['id'] }}</td>
-                    <td class="text-center">
-                      <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
-                           class="img-thumbnail rounded" width="50"
-                           alt="{{ $product['name'] }}"
-                           onerror="this.src='{{ asset('images/default-product.png') }}'">
-                    </td>
-                    <td>{{ $product['name'] }}</td>
-                    <td>
-                      <span class="badge bg-primary">{{ $variant['name'] }}</span>
-                    </td>
-                    <td class="text-end" data-order="{{ $variant['price'] }}">
-                      Rp{{ number_format($variant['price'], 0, ',', '.') }}
-                    </td>
-                    <td class="text-end" data-order="{{ $variant['discount_price'] ?? 0 }}">
-                      @if($variant['is_discounted'] ?? false && ($variant['discount_price'] ?? false))
-                        <span class="text-danger fw-bold">Rp{{ number_format($variant['discount_price'], 0, ',', '.') }}</span>
-                      @else
-                        <span class="text-muted">-</span>
-                      @endif
-                    </td>
-                    <td class="text-center" data-order="{{ $variant['stock'] }}">
-                      @if($variant['stock'] > 0)
-                        <span class="badge bg-success">{{ $variant['stock'] }}</span>
-                      @else
-                        <span class="badge bg-danger">Habis</span>
-                      @endif
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="productTable">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center">ID Produk</th>
+                  <th class="text-center">ID Varian</th>
+                  <th class="text-center">Gambar</th>
+                  <th>Nama Produk</th>
+                  <th>Varian</th>
+                  <th class="text-end">Harga Normal</th>
+                  <th class="text-end">Harga Diskon</th>
+                  <th class="text-center">Stok</th>
+                  <th class="text-center">Tindakan</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse($products as $product)
+                  @if($product['is_varians'] && !empty($product['variants']))
+                    @foreach($product['variants'] as $variant)
+                      <tr>
+                        <td class="text-center">{{ $product['id'] }}</td>
+                        <td class="text-center">{{ $variant['id'] }}</td>
+                        <td class="text-center">
+                          <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
+                               class="img-thumbnail rounded" width="50"
+                               alt="{{ $product['name'] }}"
+                               onerror="this.src='{{ asset('images/default-product.png') }}'">
+                        </td>
+                        <td>{{ $product['name'] }}</td>
+                        <td>
+                          <span class="badge bg-primary">{{ $variant['name'] }}</span>
+                        </td>
+                        <td class="text-end" data-order="{{ $variant['price'] }}">
+                          Rp{{ number_format($variant['price'], 0, ',', '.') }}
+                        </td>
+                        <td class="text-end" data-order="{{ $variant['discount_price'] ?? 0 }}">
+                          @if($variant['is_discounted'] && $variant['discount_price'])
+                            <span class="text-danger fw-bold">Rp{{ number_format($variant['discount_price'], 0, ',', '.') }}</span>
+                          @else
+                            <span class="text-muted">-</span>
+                          @endif
+                        </td>
+                        <td class="text-center" data-order="{{ $variant['stock'] }}">
+                          @if($variant['stock'] > 0)
+                            <span>{{ $variant['stock'] }}</span>
+                          @else
+                            <span class="badge bg-danger">Habis</span>
+                          @endif
+                        </td>
+                        <td class="d-flex align-items-center gap-2">
+                          <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                            <i class="fas fa-eye"></i>
+                          </a>
+                          <a href="/products/{{ $product['id'] }}?variant={{ $variant['id'] }}"
+                             class="btn btn-sm btn-outline-primary" title="Edit">
+                            <i class="fas fa-edit"></i>
+                          </a>
+                        </td>
+                      </tr>
+                    @endforeach
+                  @else
+                    <tr>
+                      <td class="text-center">{{ $product['id'] }}</td>
+                      <td class="text-center">-</td>
+                      <td class="text-center">
+                        <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
+                             class="img-thumbnail rounded" width="50"
+                             alt="{{ $product['name'] }}"
+                             onerror="this.src='{{ asset('images/default-product.png') }}'">
+                      </td>
+                      <td>{{ $product['name'] }}</td>
+                      <td><span class="badge bg-secondary">-</span></td>
+                      <td class="text-end" data-order="{{ $product['price'] }}">
+                        Rp{{ number_format($product['price'], 0, ',', '.') }}
+                      </td>
+                      <td class="text-end" data-order="{{ $product['discount_price'] ?? 0 }}">
+                        @if($product['is_discounted'] && $product['discount_price'])
+                          <span class="text-danger fw-bold">Rp{{ number_format($product['discount_price'], 0, ',', '.') }}</span>
+                        @else
+                          <span class="text-muted">-</span>
+                        @endif
+                      </td>
+                      <td class="text-center" data-order="{{ $product['stock'] }}">
+                        @if($product['stock'] > 0)
+                          <span>{{ $product['stock'] }}</span>
+                        @else
+                          <span class="badge bg-danger">Habis</span>
+                        @endif
+                      </td>
+                      <td class="d-flex align-items-center gap-2">
+                        <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                          <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="/products/{{ $product['id'] }}"
+                           class="btn btn-sm btn-outline-primary" title="Edit">
+                          <i class="fas fa-edit"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  @endif
+                @empty
+                  <tr>
+                    <td colspan="9" class="text-center py-5">
+                      <div class="d-flex flex-column align-items-center">
+                        <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted mb-2">Tidak ada produk</h5>
+                        <p class="text-muted small">Belum ada produk yang terdaftar</p>
+                        <a href="{{ route('products.create') }}" class="btn btn-sm btn-primary mt-2">
+                          <i class="fas fa-plus me-1"></i> Tambah Produk Pertama
+                        </a>
+                      </div>
                     </td>
                   </tr>
-                @endforeach
-              @else
-                <tr onclick="window.location='/products/{{ $product['id'] }}'" style="cursor: pointer;">
-                  <td class="text-center fw-bold">#{{ $product['id'] }}</td>
-                  <td class="text-center">
-                    <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
-                         class="img-thumbnail rounded" width="50"
-                         alt="{{ $product['name'] }}"
-                         onerror="this.src='{{ asset('images/default-product.png') }}'">
-                  </td>
-                  <td>{{ $product['name'] }}</td>
-                  <td><span class="badge bg-secondary">-</span></td>
-                  <td class="text-end" data-order="{{ $product['price'] }}">
-                    Rp{{ number_format($product['price'], 0, ',', '.') }}
-                  </td>
-                  <td class="text-end" data-order="{{ $product['discount_price'] ?? 0 }}">
-                    @if($product['is_discounted'] ?? false && ($product['discount_price'] ?? false))
-                      <span class="text-danger fw-bold">Rp{{ number_format($product['discount_price'], 0, ',', '.') }}</span>
-                    @else
-                      <span class="text-muted">-</span>
-                    @endif
-                  </td>
-                  <td class="text-center" data-order="{{ $product['stock'] }}">
-                    @if($product['stock'] > 0)
-                      <span class="badge bg-success">{{ $product['stock'] }}</span>
-                    @else
-                      <span class="badge bg-danger">Habis</span>
-                    @endif
-                  </td>
-                </tr>
-              @endif
-            @empty
-              <tr>
-                <td colspan="7" class="text-center py-5">
-                  <div class="d-flex flex-column align-items-center">
-                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
-                    <h5 class="text-muted mb-2">Tidak ada produk</h5>
-                    <p class="text-muted small">Belum ada produk dalam kategori ini</p>
-                    <a href="{{ route('products.create') }}" class="btn btn-sm btn-primary mt-2">
-                      <i class="fas fa-plus me-1"></i> Tambah Produk
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            @endforelse
-          </tbody>
-        </table>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>

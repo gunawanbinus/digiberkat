@@ -3,21 +3,21 @@
     <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
         <div class="sb-sidenav-menu">
             <div class="nav">
-                <div class="sb-sidenav-menu-heading">Main</div>
+                <div class="sb-sidenav-menu-heading">Utama</div>
                 <a class="nav-link" href="{{ url('employee/dashboard') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
                     Dashboard
                 </a>
-                <div class="sb-sidenav-menu-heading">Management</div>
+                <div class="sb-sidenav-menu-heading">Manajemen</div>
 
                 <a class="nav-link collapsed" href="{{ route('orders.status', 'pending') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-shopping-bag"></i></div>
-                    Orders Pending
+                    Pesanan Belum Diproses
                 </a>
             </div>
         </div>
         <div class="sb-sidenav-footer">
-            <div class="small">Logged in as:</div>
+            <div class="small">Masuk sebagai:</div>
             {{ currentUser('username') ?? 'Guest' }} {{--Lihat bagian app/Helpers/helper.php--}}
         </div>
     </nav>

@@ -27,7 +27,7 @@
                   <th class="text-end">Harga Normal</th>
                   <th class="text-end">Harga Diskon</th>
                   <th class="text-center">Stok</th>
-                  <th class="text-center">Aksi</th>
+                  <th class="text-center">Tindakan</th>
                 </tr>
               </thead>
               <tbody>
@@ -59,12 +59,15 @@
                         </td>
                         <td class="text-center" data-order="{{ $variant['stock'] }}">
                           @if($variant['stock'] > 0)
-                            <span class="badge bg-success">{{ $variant['stock'] }}</span>
+                            <span>{{ $variant['stock'] }}</span>
                           @else
                             <span class="badge bg-danger">Habis</span>
                           @endif
                         </td>
-                        <td class="text-center">
+                        <td class="d-flex align-items-center gap-2">
+                          <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                            <i class="fas fa-eye"></i>
+                          </a>
                           <a href="/products/{{ $product['id'] }}?variant={{ $variant['id'] }}"
                              class="btn btn-sm btn-outline-primary" title="Edit">
                             <i class="fas fa-edit"></i>
@@ -96,12 +99,15 @@
                       </td>
                       <td class="text-center" data-order="{{ $product['stock'] }}">
                         @if($product['stock'] > 0)
-                          <span class="badge bg-success">{{ $product['stock'] }}</span>
+                          <span>{{ $product['stock'] }}</span>
                         @else
                           <span class="badge bg-danger">Habis</span>
                         @endif
                       </td>
-                      <td class="text-center">
+                      <td class="d-flex align-items-center gap-2">
+                        <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                          <i class="fas fa-eye"></i>
+                        </a>
                         <a href="/products/{{ $product['id'] }}"
                            class="btn btn-sm btn-outline-primary" title="Edit">
                           <i class="fas fa-edit"></i>
