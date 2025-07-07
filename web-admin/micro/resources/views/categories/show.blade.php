@@ -4,176 +4,192 @@
 
 @section('content')
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h2><i class="fas fa-boxes me-2"></i>{{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
-    </div>
-    <div>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-        <i class="fas fa-edit me-2"></i>Edit Kategori
-      </button>
-      <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-        <i class="fas fa-trash me-2"></i>Hapus Kategori
-      </button>
-    </div>
-  </div>
-
-  @isset($category['description'])
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <p class="text-muted">{{ $category['description'] }}</p>
-  </div>
-  @endisset
-
-  <div class="card border-0 shadow-sm">
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="productTable">
-              <thead class="table-light">
-                <tr>
-                  <th class="text-center">ID Produk</th>
-                  <th class="text-center">ID Varian</th>
-                  <th class="text-center">Gambar</th>
-                  <th>Nama Produk</th>
-                  <th>Varian</th>
-                  <th class="text-end">Harga Normal</th>
-                  <th class="text-end">Harga Diskon</th>
-                  <th class="text-center">Stok</th>
-                  <th class="text-center">Tindakan</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($products as $product)
-                  @if($product['is_varians'] && !empty($product['variants']))
-                    @foreach($product['variants'] as $variant)
-                      <tr>
-                        <td class="text-center">{{ $product['id'] }}</td>
-                        <td class="text-center">{{ $variant['id'] }}</td>
-                        <td class="text-center">
-                          <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
-                               class="img-thumbnail rounded" width="50"
-                               alt="{{ $product['name'] }}"
-                               onerror="this.src='{{ asset('images/default-product.png') }}'">
-                        </td>
-                        <td>{{ $product['name'] }}</td>
-                        <td>
-                          <span class="badge bg-primary">{{ $variant['name'] }}</span>
-                        </td>
-                        <td class="text-end" data-order="{{ $variant['price'] }}">
-                          Rp{{ number_format($variant['price'], 0, ',', '.') }}
-                        </td>
-                        <td class="text-end" data-order="{{ $variant['discount_price'] ?? 0 }}">
-                          @if($variant['is_discounted'] && $variant['discount_price'])
-                            <span class="text-danger fw-bold">Rp{{ number_format($variant['discount_price'], 0, ',', '.') }}</span>
-                          @else
-                            <span class="text-muted">-</span>
-                          @endif
-                        </td>
-                        <td class="text-center" data-order="{{ $variant['stock'] }}">
-                          @if($variant['stock'] > 0)
-                            <span>{{ $variant['stock'] }}</span>
-                          @else
-                            <span class="badge bg-danger">Habis</span>
-                          @endif
-                        </td>
-                        <td class="d-flex align-items-center gap-2">
-                          <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
-                            <i class="fas fa-eye"></i>
-                          </a>
-                          <a href="/products/{{ $product['id'] }}?variant={{ $variant['id'] }}"
-                             class="btn btn-sm btn-outline-primary" title="Edit">
-                            <i class="fas fa-edit"></i>
-                          </a>
-                          <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
-                            <i class="fas fa-trash"></i>
-                          </a>
-                        </td>
-                      </tr>
-                    @endforeach
-                  @else
-                    <tr>
-                      <td class="text-center">{{ $product['id'] }}</td>
-                      <td class="text-center">-</td>
-                      <td class="text-center">
-                        <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
-                             class="img-thumbnail rounded" width="50"
-                             alt="{{ $product['name'] }}"
-                             onerror="this.src='{{ asset('images/default-product.png') }}'">
-                      </td>
-                      <td>{{ $product['name'] }}</td>
-                      <td><span class="badge bg-secondary">-</span></td>
-                      <td class="text-end" data-order="{{ $product['price'] }}">
-                        Rp{{ number_format($product['price'], 0, ',', '.') }}
-                      </td>
-                      <td class="text-end" data-order="{{ $product['discount_price'] ?? 0 }}">
-                        @if($product['is_discounted'] && $product['discount_price'])
-                          <span class="text-danger fw-bold">Rp{{ number_format($product['discount_price'], 0, ',', '.') }}</span>
-                        @else
-                          <span class="text-muted">-</span>
-                        @endif
-                      </td>
-                      <td class="text-center" data-order="{{ $product['stock'] }}">
-                        @if($product['stock'] > 0)
-                          <span>{{ $product['stock'] }}</span>
-                        @else
-                          <span class="badge bg-danger">Habis</span>
-                        @endif
-                      </td>
-                      <td class="d-flex align-items-center gap-2">
-                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
-                          <i class="fas fa-eye"></i>
-                        </a>
-                        <a href="/products/{{ $product['id'] }}"
-                           class="btn btn-sm btn-outline-primary" title="Edit">
-                          <i class="fas fa-edit"></i>
-                        </a>
-                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
-                          <i class="fas fa-trash"></i>
-                        </a>
-                      </td>
-                    </tr>
-                  @endif
-                @empty
-                  <tr>
-                    <td colspan="9" class="text-center py-5">
-                      <div class="d-flex flex-column align-items-center">
-                        <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
-                        <h5 class="text-muted mb-2">Tidak ada produk</h5>
-                        <p class="text-muted small">Belum ada produk yang terdaftar</p>
-                        <a href="{{ route('products.create') }}" class="btn btn-sm btn-primary mt-2">
-                          <i class="fas fa-plus me-1"></i> Tambah Produk Pertama
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
-          </div>
+    {{-- Menampilkan pesan alert --}}
+    @if (Session::has('warning'))
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {{ Session::get('warning') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-      </div>
+    @endif
+
+    @if (Session::has('info'))
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            {{ Session::get('info') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2><i class="fas fa-boxes me-2"></i>{{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
+        </div>
+        <div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="fas fa-edit me-2"></i>Edit Kategori
+            </button>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                <i class="fas fa-trash me-2"></i>Hapus Kategori
+            </button>
+        </div>
     </div>
-  </div>
+
+    @isset($category['description'])
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted">{{ $category['description'] }}</p>
+    </div>
+    @endisset
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="productTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center">ID Produk</th>
+                            <th class="text-center">ID Varian</th>
+                            <th class="text-center">Gambar</th>
+                            <th>Nama Produk</th>
+                            <th>Varian</th>
+                            <th class="text-end">Harga Normal</th>
+                            <th class="text-end">Harga Diskon</th>
+                            <th class="text-center">Stok</th>
+                            <th class="text-center">Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($products as $product)
+                            @if($product['is_varians'] && !empty($product['variants']))
+                                @foreach($product['variants'] as $variant)
+                                    <tr>
+                                        <td class="text-center">{{ $product['id'] }}</td>
+                                        <td class="text-center">{{ $variant['id'] }}</td>
+                                        <td class="text-center">
+                                            <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
+                                                 class="img-thumbnail rounded" width="50"
+                                                 alt="{{ $product['name'] }}"
+                                                 onerror="this.src='{{ asset('images/default-product.png') }}'">
+                                        </td>
+                                        <td>{{ $product['name'] }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ $variant['name'] }}</span>
+                                        </td>
+                                        <td class="text-end" data-order="{{ $variant['price'] }}">
+                                            Rp{{ number_format($variant['price'], 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-end" data-order="{{ $variant['discount_price'] ?? 0 }}">
+                                            @if($variant['is_discounted'] && $variant['discount_price'])
+                                                <span class="text-danger fw-bold">Rp{{ number_format($variant['discount_price'], 0, ',', '.') }}</span>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center" data-order="{{ $variant['stock'] }}">
+                                            @if($variant['stock'] > 0)
+                                                <span>{{ $variant['stock'] }}</span>
+                                            @else
+                                                <span class="badge bg-danger">Habis</span>
+                                            @endif
+                                        </td>
+                                        <td class="d-flex align-items-center gap-2">
+                                            <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="/products/{{ $product['id'] }}?variant={{ $variant['id'] }}"
+                                                 class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @else
+                                <tr>
+                                    <td class="text-center">{{ $product['id'] }}</td>
+                                    <td class="text-center">-</td>
+                                    <td class="text-center">
+                                        <img src="{{ $product['thumbnails'][0] ?? asset('images/default-product.png') }}"
+                                             class="img-thumbnail rounded" width="50"
+                                             alt="{{ $product['name'] }}"
+                                             onerror="this.src='{{ asset('images/default-product.png') }}'">
+                                    </td>
+                                    <td>{{ $product['name'] }}</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                    <td class="text-end" data-order="{{ $product['price'] }}">
+                                        Rp{{ number_format($product['price'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="text-end" data-order="{{ $product['discount_price'] ?? 0 }}">
+                                        @if($product['is_discounted'] && $product['discount_price'])
+                                            <span class="text-danger fw-bold">Rp{{ number_format($product['discount_price'], 0, ',', '.') }}</span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center" data-order="{{ $product['stock'] }}">
+                                        @if($product['stock'] > 0)
+                                            <span>{{ $product['stock'] }}</span>
+                                        @else
+                                            <span class="badge bg-danger">Habis</span>
+                                        @endif
+                                    </td>
+                                    <td class="d-flex align-items-center gap-2">
+                                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="/products/{{ $product['id'] }}"
+                                           class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endif
+                        @empty
+                            {{-- Add a unique class to the empty row --}}
+                            <tr class="dataTables_empty_row">
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                                        <h5 class="text-muted mb-2">Tidak ada produk</h5>
+                                        <p class="text-muted small">Belum ada produk yang terdaftar</p>
+                                        <a href="{{ route('products.create') }}" class="btn btn-sm btn-primary mt-2">
+                                            <i class="fas fa-plus me-1"></i> Tambah Produk Pertama
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
 @section('scripts')
-<!-- DataTables Resources -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap5.min.css">
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap5.min.js"></script>
-<!-- Tambahkan library ini -->
-{{-- <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.copy.min.js"></script> --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
 
 <script>
 $(document).ready(function() {
-    // Initialize DataTables only if table has data
-    if ($('#productTable tbody tr').not('.empty-row').length > 0) {
+    // Check if the empty row exists
+    const isEmptyTable = $('#productTable tbody').find('.dataTables_empty_row').length > 0;
+
+    if (!isEmptyTable) {
+        // Initialize DataTables if the table is NOT empty
         $('#productTable').DataTable({
             order: [[6, 'asc']], // Default sort by stock
             language: {
@@ -183,7 +199,6 @@ $(document).ready(function() {
                 buttons: {
                     excel: 'Excel',
                     print: 'Print'
-                    // ,copy: 'Salin'
                 }
             },
             dom: '<"row mb-3"<"col-sm-12 col-md-4"l><"col-sm-12 col-md-4"B><"col-sm-12 col-md-4"f>>rt<"row mt-3"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
@@ -198,30 +213,22 @@ $(document).ready(function() {
                             body: function(data, row, column, node) {
                                 const $node = $(node);
                                 const rawHtml = $node.html() || '';
-
-                                // Bersihkan semua tag HTML
                                 const cleanText = rawHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-                                // Kolom ID (index 0): hilangkan tanda '#'
                                 if (column === 0) {
                                     return cleanText.replace(/^#/, '');
                                 }
-                                // Kolom Harga Normal (index 3) dan Diskon (index 4)
                                 if (column === 3 || column === 4) {
                                     const numeric = cleanText.replace(/[^\d]/g, '');
                                     return numeric ? parseInt(numeric) : '-';
                                 }
-
-                                // Kolom Varian (index 2) → jika "-" badge, ubah ke "-"
                                 if (column === 2 && (cleanText === '-' || cleanText === '')) {
                                     return '-';
                                 }
-
                                 return cleanText;
                             }
                         }
                     }
                 },
-
                 {
                     extend: 'print',
                     text: '<i class="fas fa-print me-2"></i> Print',
@@ -234,14 +241,6 @@ $(document).ready(function() {
                         $(win.document.body).find('h1').css('text-align','center');
                     }
                 },
-                // {
-                //     extend: 'copy',
-                //     text: '<i class="fas fa-copy me-2"></i> Salin',
-                //     className: 'btn btn-dark btn-sm',
-                //     exportOptions: {
-                //         columns: [0, 2, 3, 4, 5, 6]
-                //     }
-                // }
             ],
             columnDefs: [
                 {
@@ -281,6 +280,10 @@ $(document).ready(function() {
                 $('.dataTables_length select').addClass('form-select form-select-sm');
             }
         });
+    } else {
+        // If table is empty, hide DataTables controls
+        // This targets the wrapper div created by DataTables
+        $('.dataTables_wrapper').find('.row').hide();
     }
 });
 </script>
@@ -323,6 +326,7 @@ $(document).ready(function() {
     letter-spacing: 0.05em;
 }
 
+/* Ensure DataTables controls are hidden when the table is explicitly empty */
 .dataTables_wrapper .row {
     margin-left: 0;
     margin-right: 0;

@@ -101,6 +101,8 @@ Route::middleware(['check.login', 'check.token', 'check.role:employee'])->group(
     */
     Route::prefix('employee')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'employeeindex'])->name('employee.dashboard');
+        Route::get('/orders/all', [OrderController::class, 'indexemployee'])->name('orders.index.employee');
+        Route::get('/orders/{id}', [OrderController::class, 'showemployee'])->name('orders.showemployee');
     });
 });
 
@@ -112,7 +114,6 @@ Route::middleware(['check.login', 'check.token', 'check.role:employee'])->group(
 Route::middleware(['check.login', 'check.token', 'check.role:admin,employee'])->group(function () {
     Route::get('/orders/all', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('orders.show');
-    Route::get('/orders/{id}/employee', [OrderController::class, 'showemployee'])->name('orders.showemployee');
     Route::get('/orders/status/{status}', [OrderController::class, 'getByStatus'])->name('orders.status');
 
     Route::post('/orders/{id}/finish', function ($id) {

@@ -16,6 +16,11 @@ class OrderController extends Controller
         $this->baseUrl = rtrim(config('services.golang_api.url'), '/');
     }
 
+    /**
+     * Menampilkan semua pesanan (biasanya untuk halaman admin/manajemen pesanan).
+     *
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function index()
     {
         $token = session('api_token');
@@ -23,16 +28,58 @@ class OrderController extends Controller
             return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/all");
+        try {
+            $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/all");
 
-        if ($response->successful()) {
-            $orders = $response->json()['data'] ?? [];
-            return view('orders.index', compact('orders'));
+            if ($response->successful()) {
+                $orders = $response->json()['data'] ?? [];
+                return view('orders.index', compact('orders'));
+            }
+
+            Log::error('Gagal mengambil semua pesanan dari API GoLang:', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            return back()->with('error', 'Gagal mengambil data pesanan. Kode: ' . $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('Pengecualian saat mengambil semua pesanan:', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Server tidak tersedia atau terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+    public function indexemployee()
+    {
+        $token = session('api_token');
+        if (!$token) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        return back()->with('error', 'Gagal mengambil data pesanan');
+        try {
+            $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/all");
+
+            if ($response->successful()) {
+                $orders = $response->json()['data'] ?? [];
+                return view('orders.allemployee', compact('orders'));
+            }
+
+            Log::error('Gagal mengambil semua pesanan dari API GoLang:', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            return back()->with('error', 'Gagal mengambil data pesanan. Kode: ' . $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('Pengecualian saat mengambil semua pesanan:', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Server tidak tersedia atau terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 
+    /**
+     * Menampilkan pesanan berdasarkan status tertentu (misalnya untuk halaman laporan admin).
+     *
+     * @param string $status
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function getByStatus($status)
     {
         $token = session('api_token');
@@ -59,21 +106,91 @@ class OrderController extends Controller
                 ]);
             }
 
+            Log::error("Gagal mengambil pesanan dengan status '{$status}' dari API GoLang:", [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
             return back()->with('error', 'Gagal mengambil data pesanan: ' . $response->body());
 
         } catch (\Exception $e) {
+            Log::error("Pengecualian saat mengambil pesanan dengan status '{$status}':", ['error' => $e->getMessage()]);
             return back()->with('error', 'Server tidak tersedia: ' . $e->getMessage());
         }
     }
 
-    // Fungsi scanOrder yang baru ditambahkan/dimodifikasi
+    /**
+     * API Endpoint untuk mendapatkan daftar pesanan pending.
+     * Ini akan dipanggil oleh JavaScript dari employee dashboard via AJAX.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPendingOrders(Request $request)
+    {
+        $token = session('api_token');
+        if (!$token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sesi berakhir. Silakan login kembali.'
+            ], 401); // Unauthorized
+        }
+
+        try {
+            $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/all/pending");
+
+            if ($response->successful()) {
+                $pendingOrders = $response->json('data') ?? [];
+
+                // Sorting data berdasarkan ID pesanan
+                usort($pendingOrders, fn($a, $b) => ($a['order']['id'] ?? 0) <=> ($b['order']['id'] ?? 0));
+
+                // Batasi jumlah data yang ditampilkan (misalnya 15, bisa disesuaikan di frontend juga)
+                $pendingOrders = array_slice($pendingOrders, 0, 15);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $pendingOrders
+                ]);
+            }
+
+            Log::error('Gagal mengambil pesanan pending dari API GoLang:', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data pesanan pending dari server.'
+            ], $response->status());
+
+        } catch (\Exception $e) {
+            Log::error('Pengecualian saat mengambil pesanan pending:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan internal saat memuat pesanan pending.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Menangani permintaan pemindaian QR code dari dashboard karyawan.
+     * Memvalidasi apakah ID pesanan valid dan ada dalam daftar pesanan pending.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function scanOrder(Request $request)
     {
-        $request->validate([
-            'order_id' => 'required|numeric|min:1', // Validasi bahwa ini adalah angka positif
-        ]);
+        $orderId = $request->input('order_id');
 
-        $orderId = (int) $request->input('order_id'); // Konversi ke integer
+        // Validasi dasar input: harus ada, numerik, dan positif
+        if (empty($orderId) || !is_numeric($orderId) || (int)$orderId < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ID Pesanan tidak valid. Harap pindai ulang.'
+            ], 400); // Bad Request
+        }
+
+        $orderId = (int) $orderId; // Pastikan menjadi integer
 
         $token = session('api_token');
         if (!$token) {
@@ -84,49 +201,56 @@ class OrderController extends Controller
         }
 
         try {
-            // Panggil API GoLang untuk mendapatkan detail pesanan berdasarkan ID
-            $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/{$orderId}");
+            // 1. Ambil daftar pesanan pending dari GoLang API untuk validasi real-time
+            $pendingResponse = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/all/pending");
 
-            if ($response->successful()) {
-                $data = $response->json();
-                // Pastikan struktur respons dari GoLang API sesuai
-                // Misalnya, jika API mengembalikan { "data": { "id": 1, "status": "pending", ... } }
-                // maka $data['data'] akan berisi detail pesanan.
-                // Jika API hanya mengembalikan { "id": 1, "status": "pending", ... }
-                // maka Anda bisa langsung menggunakan $data.
-                $orderData = $data['data'] ?? $data; // Sesuaikan dengan struktur respons API GoLang Anda
-
-                if (!empty($orderData)) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Pesanan ditemukan.',
-                        'order' => [
-                            'id' => $orderData['id'] ?? $orderId, // Ambil ID dari data atau gunakan orderId input
-                            // 'status' => $orderData['status'] ?? 'N/A',
-                            // 'total_amount' => $orderData['total_order_price'] ?? 0, // Sesuaikan nama field
-                            // Tambahkan detail lain yang ingin Anda tampilkan di frontend
-                            // Misalnya: 'customer_name' => $orderData['customer_name'] ?? 'Guest',
-                        ]
-                    ]);
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Detail pesanan dengan ID ' . $orderId . ' tidak ditemukan di API GoLang.'
-                    ], 404);
-                }
-
-            } else {
-                Log::error('API GoLang error on scanOrder for ID: ' . $orderId, [
-                    'status' => $response->status(),
-                    'body' => $response->body()
+            if (!$pendingResponse->successful()) {
+                Log::error('Gagal mengambil pesanan pending saat cek scan:', [
+                    'status' => $pendingResponse->status(),
+                    'body' => $pendingResponse->body()
                 ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal mengambil detail pesanan dari API GoLang: ' . ($response->json()['message'] ?? 'Unknown error')
-                ], $response->status());
+                    'message' => 'Gagal memeriksa daftar pesanan pending dari server. Silakan coba lagi.'
+                ], 500); // Internal Server Error
             }
+
+            $pendingOrders = $pendingResponse->json('data') ?? [];
+            $isOrderPending = false;
+            $foundOrderData = null; // Untuk menyimpan data pesanan yang ditemukan jika ada
+
+            // Cari ID pesanan yang dipindai di daftar pending
+            foreach ($pendingOrders as $item) {
+                if (isset($item['order']['id']) && (int)$item['order']['id'] === $orderId) {
+                    $isOrderPending = true;
+                    $foundOrderData = $item['order']; // Asumsi detail pesanan ada di 'order' key
+                    break;
+                }
+            }
+
+            // 2. Cek apakah ID pesanan yang dipindai ada di daftar pending
+            if (!$isOrderPending) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Pesanan dengan ID #{$orderId} tidak ditemukan dalam daftar pesanan pending atau tidak valid. Pastikan ini adalah pesanan yang belum diproses."
+                ], 404); // Not Found
+            }
+
+            // Jika sampai di sini, pesanan valid dan berstatus pending.
+            // Kembalikan data pesanan yang ditemukan.
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesanan ditemukan dan berstatus pending.',
+                'order' => [
+                    'id' => $foundOrderData['id'] ?? $orderId,
+                    'total_price' => $foundOrderData['total_amount'] ?? $foundOrderData['total_price'] ?? 0, // Sesuaikan dengan nama field di API GoLang
+                    'status' => $foundOrderData['status'] ?? 'pending',
+                    // Tambahkan detail lain dari $foundOrderData jika diperlukan di frontend
+                ]
+            ]);
+
         } catch (\Exception $e) {
-            Log::error('Exception during QR scan order lookup: ' . $e->getMessage(), ['order_id' => $orderId]);
+            Log::error('Pengecualian saat memproses scan QR order:', ['order_id' => $orderId, 'error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan pada server. Mohon coba lagi nanti.'
@@ -134,76 +258,66 @@ class OrderController extends Controller
         }
     }
 
-
+    /**
+     * Menampilkan detail pesanan untuk halaman admin/pengguna umum.
+     *
+     * @param int $id The ID of the order.
+     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     */
     public function show($id)
     {
-        $token = session('api_token');
-        if (!$token) {
-            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
-        $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/{$id}");
-
-        if ($response->successful()) {
-            $data = $response->json();
-            $items = $data['data'] ?? [];
-            $total = $data['total_order_price'] ?? 0;
-            $status = $data['status'] ?? 'pending';
-            $created_at = $data['created_at'] ?? now();
-
-            return view('orders.show', compact('items', 'total', 'status', 'created_at'))
-                       ->with('orderId', $id);
-        }
-
-        return back()->with('error', 'Gagal mengambil detail pesanan');
+        return $this->renderOrderDetail($id, 'orders.show');
     }
-    public function showemployee($id)
+
+    public function showEmployee($id)
+    {
+        return $this->renderOrderDetail($id, 'orders.showemployee');
+    }
+
+    private function renderOrderDetail($id, $view)
     {
         $token = session('api_token');
         if (!$token) {
             return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        // Panggil API GoLang untuk mendapatkan detail pesanan berdasarkan ID
-        $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/{$id}");
+        try {
+            $response = Http::withToken($token)->timeout(10)->get("{$this->baseUrl}/orders/{$id}");
 
-        if ($response->successful()) {
-            $data = $response->json();
+            if ($response->successful()) {
+                $data = $response->json();
+                $items = $data['data'] ?? [];
+                $total = $data['total_order_price'] ?? 0;
+                $status = $data['status'] ?? 'pending';
+                $created_at = $data['created_at'] ?? now();
 
-            // --- LANGKAH PENTING UNTUK DEBUGGING: Log respons API yang sebenarnya ---
-            // Ini akan mencatat struktur JSON lengkap yang diterima dari API GoLang
-            // Anda bisa melihatnya di file storage/logs/laravel.log
-            Log::info('API Response for showemployee', ['order_id' => $id, 'response_data' => $data]);
+                return view($view, compact('items', 'total', 'status', 'created_at'))
+                    ->with('orderId', $id);
+            }
 
-            // Asumsi struktur API GoLang sama dengan yang berhasil ditangani oleh fungsi 'show':
-            // {
-            //     "data": [ {item1}, {item2}, ... ], // Ini adalah array dari item pesanan
-            //     "total_order_price": 12345,
-            //     "status": "done",
-            //     "created_at": "2023-10-26T10:00:00Z"
-            // }
-            // Dengan asumsi ini, 'items' ada langsung di bawah kunci 'data', dan 'total_order_price',
-            // 'status', 'created_at' berada di level root dari respons API.
+            Log::error('Gagal mengambil detail pesanan:', [
+                'order_id' => $id,
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+            return back()->with('error', 'Gagal mengambil detail pesanan. Kode: ' . $response->status());
 
-            $items = $data['data'] ?? []; // Ekstrak array item langsung dari kunci 'data'
-            $total = $data['total_order_price'] ?? 0; // Ekstrak total dari level root
-            $status = $data['status'] ?? 'pending'; // Ekstrak status dari level root
-            $created_at = $data['created_at'] ?? now(); // Ekstrak created_at dari level root
-
-            return view('orders.showemployee', compact('items', 'total', 'status', 'created_at'))
-                         ->with('orderId', $id);
+        } catch (\Exception $e) {
+            Log::error('Pengecualian saat mengambil detail pesanan:', [
+                'order_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Server tidak tersedia: ' . $e->getMessage());
         }
-
-        // Log error jika panggilan API gagal
-        Log::error('Failed to fetch order detail for showemployee', [
-            'order_id' => $id,
-            'status' => $response->status(),
-            'body' => $response->body()
-        ]);
-        return back()->with('error', 'Gagal mengambil detail pesanan');
     }
 
 
+    /**
+     * Helper function to get human-readable status labels.
+     *
+     * @param string $status
+     * @return string
+     */
     private function getStatusLabel($status)
     {
         $labels = [
@@ -216,6 +330,3 @@ class OrderController extends Controller
         return $labels[$status] ?? ucfirst($status);
     }
 }
-
-
-

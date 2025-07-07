@@ -61,7 +61,7 @@
                     Pesanan Belum Diproses
                 </h5>
                 {{-- Pastikan route 'orders.status' sudah terdefinisi di web.php Anda --}}
-                <a href="{{ route('orders.status', 'pending') }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ route('orders.index.employee') }}" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-eye me-1"></i> Lihat Semua
                 </a>
             </div>
@@ -141,20 +141,37 @@
 @endsection
 
 @section('scripts')
-
+{{-- Pastikan Anda memuat library html5-qrcode --}}
+<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 <script>
     let html5QrCode; // Variabel global untuk instance Html5Qrcode
     let currentCameraId = null; // Menyimpan ID kamera yang sedang digunakan
 
+    // Fungsi untuk menampilkan pesan alert di lokasi yang sesuai
+    function displayScanResult(containerId, type, message, orderId = null) {
+        const container = document.getElementById(containerId);
+        let html = '';
+        if (type === 'success') {
+            html = `
+                <div class="alert alert-success">
+                    <strong>${message}</strong>
+                    ${orderId ? `<br><a href="{{ url('/orders') }}/${orderId}/employee-detail" class="btn btn-sm btn-info mt-2">Lihat Detail Pesanan</a>` : ''}
+                </div>
+            `;
+        } else if (type === 'warning') {
+            html = `<div class="alert alert-warning">${message}</div>`;
+        } else if (type === 'error') {
+            html = `<div class="alert alert-danger">${message}</div>`;
+        } else { // info or default
+            html = `<div class="alert alert-info">${message}</div>`;
+        }
+        container.innerHTML = html;
+    }
+
     // Fungsi callback saat QR code berhasil dipindai (dari kamera atau gambar)
     function onScanSuccess(decodedText, decodedResult) {
         console.log(`Code matched = ${decodedText}`, decodedResult);
-        document.getElementById('qr-reader-results').innerHTML = `
-            <div class="alert alert-success">
-                <strong>Kode Terpindai:</strong> ${decodedText}
-            </div>
-            <p>Mencari pesanan...</p>
-        `;
+        displayScanResult('qr-reader-results', 'info', `<strong>Kode Terpindai:</strong> ${decodedText}<br>Mencari pesanan...`);
         document.getElementById('qr-image-results').innerHTML = ''; // Bersihkan hasil scan gambar jika ini dari kamera
 
         // Hentikan pemindai kamera setelah pemindaian berhasil (jika aktif)
@@ -172,16 +189,17 @@
         sendOrderIdToBackend(decodedText);
     }
 
-    // Fungsi callback saat pemindaian gagal (biasanya diabaikan untuk live scan)
+    // Fungsi callback saat pemindaian gagal (biasanya diabaikan untuk live scan, kecuali untuk feedback visual)
     function onScanFailure(error) {
-        // console.warn(`QR Code scan error = ${error}`);
-        // Anda bisa menambahkan pesan feedback jika tidak ada QR code terdeteksi untuk waktu yang lama
+        // console.warn(`QR Code scan error = ${error}`); // Terlalu banyak log jika aktif
+        // Anda bisa menambahkan pesan feedback jika tidak ada QR code terdeteksi untuk waktu yang lama,
+        // namun untuk live scan ini bisa sangat berisik. Lebih baik biarkan Html5Qrcode menangani UI error-nya.
     }
 
     // Fungsi untuk memulai pemindai kamera
     const startCameraScanner = (cameraId) => {
         if (!cameraId) {
-            document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-warning">Pilih kamera terlebih dahulu.</div>`;
+            displayScanResult('qr-reader-results', 'warning', 'Pilih kamera terlebih dahulu.');
             return;
         }
 
@@ -207,17 +225,17 @@
                 qrbox: { width: 250, height: 250 }, // Ukuran kotak pemindaian
                 aspectRatio: 1.777778 // 16:9 - Opsional, untuk rasio aspek video
             },
-            onScanSuccess,  // Callback untuk sukses scan
-            onScanFailure   // Callback untuk gagal scan
+            onScanSuccess,   // Callback untuk sukses scan
+            onScanFailure    // Callback untuk gagal scan
         ).then(() => {
             console.log("Camera scanner started.");
             document.getElementById('stopScannerBtn').style.display = 'block';
             document.getElementById('startScannerBtn').style.display = 'none';
-            document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-info">Pemindai kamera aktif. Arahkan ke QR Code.</div>`;
+            displayScanResult('qr-reader-results', 'info', 'Pemindai kamera aktif. Arahkan ke QR Code.');
             document.getElementById('qr-image-results').innerHTML = '';
         }).catch(err => {
             console.error(`Unable to start scanning with camera: ${err}`);
-            document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-danger">Gagal memulai kamera: ${err}. Pastikan izin kamera diberikan dan situs menggunakan HTTPS.</div>`;
+            displayScanResult('qr-reader-results', 'error', `Gagal memulai kamera: ${err}. Pastikan izin kamera diberikan dan situs menggunakan HTTPS.`);
             document.getElementById('stopScannerBtn').style.display = 'none';
             document.getElementById('startScannerBtn').style.display = 'block';
         });
@@ -254,7 +272,7 @@
                 startCameraScanner(currentCameraId);
 
             } else {
-                document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-danger">Tidak ada kamera terdeteksi di perangkat ini.</div>`;
+                displayScanResult('qr-reader-results', 'error', 'Tidak ada kamera terdeteksi di perangkat ini.');
                 document.getElementById('stopScannerBtn').style.display = 'none';
                 document.getElementById('startScannerBtn').style.display = 'none';
                 cameraSelection.innerHTML = '<option value="">Tidak ada kamera</option>';
@@ -262,7 +280,7 @@
             }
         }).catch(err => {
             console.error(`Error getting camera devices: ${err}`);
-            document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-danger">Terjadi kesalahan saat mengakses perangkat kamera: ${err.message}.</div>`;
+            displayScanResult('qr-reader-results', 'error', `Terjadi kesalahan saat mengakses perangkat kamera: ${err.message}.`);
             document.getElementById('stopScannerBtn').style.display = 'none';
             document.getElementById('startScannerBtn').style.display = 'none';
             cameraSelection.innerHTML = '<option value="">Gagal mendeteksi kamera</option>';
@@ -293,7 +311,7 @@
             if (html5QrCode.isScanning) {
                 html5QrCode.stop().then((ignore) => {
                     console.log("QR Code scanner stopped by user.");
-                    document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-info">Pemindai kamera dihentikan.</div>`;
+                    displayScanResult('qr-reader-results', 'info', 'Pemindai kamera dihentikan.');
                     document.getElementById('stopScannerBtn').style.display = 'none';
                     document.getElementById('startScannerBtn').style.display = 'block'; // Tampilkan tombol Start
                 }).catch((err) => {
@@ -307,7 +325,7 @@
             if (currentCameraId) {
                 startCameraScanner(currentCameraId);
             } else {
-                document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-danger">Tidak ada kamera yang terdeteksi untuk memulai ulang.</div>`;
+                displayScanResult('qr-reader-results', 'error', 'Tidak ada kamera yang terdeteksi untuk memulai ulang.');
             }
         });
 
@@ -323,24 +341,19 @@
 
             const imageFile = e.target.files[0];
 
-            qrImageResultsDiv.innerHTML = `<div class="alert alert-info">Sedang memindai gambar...</div>`;
+            displayScanResult('qr-image-results', 'info', 'Sedang memindai gambar...');
             document.getElementById('qr-reader-results').innerHTML = ''; // Bersihkan hasil kamera
 
             // Fungsi pembantu untuk melakukan pemindaian gambar
             const performImageScan = () => {
                 html5QrCode.scanFile(imageFile, true)
                     .then(decodedText => {
-                        qrImageResultsDiv.innerHTML = `
-                            <div class="alert alert-success">
-                                <strong>Kode Terpindai dari Gambar:</strong> ${decodedText}
-                            </div>
-                            <p>Mencari pesanan...</p>
-                        `;
+                        displayScanResult('qr-image-results', 'info', `<strong>Kode Terpindai dari Gambar:</strong> ${decodedText}<br>Mencari pesanan...`);
                         sendOrderIdToBackend(decodedText);
                         qrImageFile.value = ''; // Reset input file setelah berhasil
                     })
                     .catch(err => {
-                        qrImageResultsDiv.innerHTML = `<div class="alert alert-danger">Gagal memindai QR Code dari gambar. Alasan: ${err}</div>`;
+                        displayScanResult('qr-image-results', 'error', `Gagal memindai QR Code dari gambar. Pastikan gambar berisi QR Code yang jelas dan valid. Alasan: ${err}`);
                         console.error(`Error scanning file: ${err}`);
                         qrImageFile.value = ''; // Reset input file bahkan jika ada error
                     });
@@ -365,6 +378,13 @@
 
     // Fungsi untuk mengirim ID pesanan ke backend
     async function sendOrderIdToBackend(orderId) {
+        // Validasi input: pastikan orderId adalah angka
+        if (!/^\d+$/.test(orderId)) {
+            displayScanResult('qr-reader-results', 'warning', `QR Code "${orderId}" tidak valid. Harap pindai QR Code yang berisi ID pesanan dalam format angka.`);
+            displayScanResult('qr-image-results', 'warning', `QR Code "${orderId}" tidak valid. Harap unggah gambar dengan QR Code yang berisi ID pesanan dalam format angka.`);
+            return; // Hentikan proses jika tidak valid
+        }
+
         try {
             const response = await fetch('{{ route('orders.scan') }}', {
                 method: 'POST',
@@ -378,31 +398,23 @@
             const data = await response.json();
 
             if (response.ok && data.success) {
-                const successHtml = `
-                    <div class="alert alert-success">
-                        <strong>Pesanan Ditemukan!</strong><br>
-                        ID: ${data.order.id}<br>
-                        <br><a href="{{ url('/orders') }}/${data.order.id}/employee-detail" class="btn btn-sm btn-info mt-2">Lihat Detail Pesanan</a>
-                    </div>
-                `;
-                document.getElementById('qr-reader-results').innerHTML = successHtml;
-                document.getElementById('qr-image-results').innerHTML = successHtml;
+                displayScanResult('qr-reader-results', 'success', `<strong>Pesanan Ditemukan!</strong><br>ID: ${data.order.id}`, data.order.id);
+                displayScanResult('qr-image-results', 'success', `<strong>Pesanan Ditemukan!</strong><br>ID: ${data.order.id}`, data.order.id);
 
                 // Opsional: Muat ulang bagian "Pending Orders" jika ada
-                // Ini akan memerlukan AJAX request ke endpoint yang mengembalikan data pendingOrders
-                // Untuk kesederhanaan, ini bisa diabaikan atau ditambahkan nanti
-                // window.location.reload(); // Contoh refresh halaman penuh jika ingin update langsung
+                // Anda bisa membuat fungsi terpisah untuk memuat ulang daftar ini via AJAX
+                // atau cukup refresh halaman untuk kesederhanaan.
+                // window.location.reload();
             } else {
                 const message = data.message || 'Pesanan tidak ditemukan atau terjadi kesalahan.';
-                const errorHtml = `<div class="alert alert-danger">${message}</div>`;
-                document.getElementById('qr-reader-results').innerHTML = errorHtml;
-                document.getElementById('qr-image-results').innerHTML = errorHtml;
+                displayScanResult('qr-reader-results', 'error', message);
+                displayScanResult('qr-image-results', 'error', message);
             }
         } catch (error) {
             console.error('Error sending order ID to backend:', error);
-            const errorMessage = 'Terjadi kesalahan komunikasi dengan server.';
-            document.getElementById('qr-reader-results').innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
-            document.getElementById('qr-image-results').innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
+            const errorMessage = 'Terjadi kesalahan komunikasi dengan server. Pastikan koneksi internet Anda stabil.';
+            displayScanResult('qr-reader-results', 'error', errorMessage);
+            displayScanResult('qr-image-results', 'error', errorMessage);
         }
     }
 </script>

@@ -10,7 +10,7 @@
                 </a>
                 <div class="sb-sidenav-menu-heading">Manajemen</div>
 
-                <a class="nav-link collapsed" href="{{ route('orders.index') }}">
+                <a class="nav-link collapsed" href="{{ route('orders.index.employee') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-shopping-bag"></i></div>
                     Pesanan
                 </a>
