@@ -1,17 +1,58 @@
-@extends('employee') {{-- Pastikan ini mengarah ke layout employee Anda, misalnya: resources/views/employee.blade.php --}}
+@extends('employee')
 
-@section('title', 'Dashboard Employee')
+@section('title', 'Dashboard Karyawan')
 
 @section('content')
-<h1 class="mt-4">Dashboard Employee</h1>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0 fw-bold">Dashboard</h2>
+      </div>
 
 <div class="row">
-    {{-- Card untuk Pemindai Kamera Langsung --}}
-    <div class="col-12 col-md-6 col-lg-6"> {{-- Kelas responsif untuk tata letak yang lebih baik --}}
-        <div class="card mb-4 shadow">
-            <div class="card-header bg-primary text-white">
-                <i class="fas fa-qrcode me-1"></i>
-                Pindai Kode QR Pesanan (Kamera)
+    <!-- Pending Orders -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">Pesanan Belum Diproses</h6>
+            <a href="{{ route('orders.status', 'pending') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+            @foreach($pendingOrders as $item)
+            <a href="/orders/{{ $item['order']['id'] }}" class="list-group-item list-group-item-action border-0 py-3">
+                <div class="d-flex align-items-center">
+                <img src="{{ $item['sample_item']['thumbnail'] }}"
+                        class="rounded-2 me-3" width="50" height="50"
+                        style="object-fit: cover; border: 1px solid #eee;">
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                    <h6 class="mb-1">#{{ $item['order']['id'] }}</h6>
+                    <span class="text-primary fw-bold">Rp{{ number_format($item['order']['total_price']) }}</span>
+                    </div>
+                    <small class="text-muted">{{ $item['sample_item']['product_name'] }}</small>
+                    <div class="mt-1">
+                    <span class="badge bg-light text-dark">
+                        <i class="far fa-clock me-1"></i>
+                        {{ \Carbon\Carbon::parse($item['order']['created_at'])->format('d M Y') }}
+                    </span>
+                    </div>
+                </div>
+                </div>
+            </a>
+            @endforeach
+            </div>
+        </div>
+        </div>
+    </div>
+
+    {{-- Card untuk Pemindai QR --}}
+    <div class="col-12 col-md-6 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white border-bottom d-flex">
+                <i class="fas fa-qrcode me-2"></i>
+                <h6 class="mb-0 fw-bold">Pindai Kode QR Pesanan</h6>
             </div>
             <div class="card-body text-center">
                 <div class="mb-3">
@@ -23,39 +64,13 @@
                 <button id="stopScannerBtn" class="btn btn-danger mt-3" style="display:none;">Stop Scanner</button>
                 <button id="startScannerBtn" class="btn btn-primary mt-3" style="display:none;">Mulai Pemindai</button>
             </div>
-        </div>
-    </div>
-
-    {{-- Card untuk Pemindai dari Gambar --}}
-    <div class="col-12 col-md-6 col-lg-6"> {{-- Kelas responsif untuk tata letak yang lebih baik --}}
-        <div class="card mb-4 shadow">
-            <div class="card-header bg-secondary text-white">
-                <i class="fas fa-upload me-1"></i>
-                Pindai Kode QR dari Gambar
+            <div class="card-body text-center">
+                <p class="text-muted">atau</p>
             </div>
             <div class="card-body text-center">
-                <p class="text-muted">Pilih gambar yang berisi kode QR dari perangkat Anda.</p>
+                <label class="form-label">Pilih kode QR dari perangkat:</label>
                 <input type="file" class="form-control" id="qr-image-file" accept="image/*">
                 <div id="qr-image-results" class="mt-3"></div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Card Informasi Tambahan --}}
-    <div class="col-12 col-md-6 col-lg-6"> {{-- Kelas responsif untuk tata letak yang lebih baik --}}
-        <div class="card mb-4 shadow">
-            <div class="card-header bg-info text-white">
-                <i class="fas fa-info-circle me-1"></i>
-                Informasi Tambahan
-            </div>
-            <div class="card-body">
-                <p>Selamat datang di dashboard karyawan. Gunakan pemindai QR untuk memproses pesanan dengan cepat.</p>
-                <ul>
-                    <li>Gunakan **"Pindai Kode QR Pesanan (Kamera)"** untuk pemindaian langsung.</li>
-                    <li>Gunakan **"Pindai Kode QR dari Gambar"** untuk mengunggah gambar.</li>
-                    <li>QR Code harus berisi ID pesanan dalam format angka.</li>
-                    <li>Pastikan koneksi internet stabil untuk validasi pesanan.</li>
-                </ul>
             </div>
         </div>
     </div>
@@ -63,7 +78,6 @@
 @endsection
 
 @section('scripts')
-{{-- Pastikan Anda memuat library html5-qrcode --}}
 <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 <script>
     let html5QrCode; // Variabel global untuk instance Html5Qrcode

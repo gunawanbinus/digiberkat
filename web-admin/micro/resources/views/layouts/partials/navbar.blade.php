@@ -2,9 +2,9 @@
 
 <nav class="sb-topnav navbar navbar-expand navbar-dark bg-primary shadow-sm">
     <!-- Navbar Brand -->
-    <a class="navbar-brand ps-3 d-flex align-items-center" href="{{ url('admin/dashboard') }}">
+    <a class="navbar-brand ps-2 d-flex align-items-center") }}">
         <i class="fas fa-shield-alt me-2"></i>
-        <span class="fw-bold">Admin Digiberkat</span>
+        <span class="fw-bold">Digiberkat</span>
     </a>
 
     <!-- Sidebar Toggle -->

@@ -65,7 +65,31 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function employeeindex(){
-        return view('employee.dashboard');
+    public function employeeindex()
+    {
+        try {
+            $token = session('api_token');
+            $baseUrl = config('services.golang_api.url');
+
+            // Menggunakan Http::pool untuk parallel requests
+            $responses = Http::pool(fn ($pool) => [
+                $pool->withToken($token)->get("{$baseUrl}orders/all/pending"),
+            ]);
+
+            // Proses data
+            $pendingOrders = $responses[0]->json('data') ?? [];
+
+            // Sorting data
+            usort($pendingOrders, fn($a, $b) => $a['order']['id'] <=> $b['order']['id']);
+
+            // Batasi jumlah data yang ditampilkan
+            $pendingOrders = array_slice($pendingOrders, 0, 15);
+
+            return view('employee.dashboard', compact('pendingOrders'));
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Gagal memuat dashboard: ' . $e->getMessage());
+        }
      }
 }
