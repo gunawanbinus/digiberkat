@@ -2993,39 +2993,50 @@ func StatRoutes(r *gin.Engine, db *sql.DB) {
 	addRoute(statGroup, "GET", "/lowstocks", []string{"admin"}, GetLowStocks, db) // Lihat produk yang hampir atau sudah habis
 }
 
+type SalesPerMonth struct {
+	Month      string `json:"month"`
+	TotalSales int64  `json:"total_sales"`
+}
+
 func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
-	// Ambil nominal penjualan per bulan dalam setahun terakhir dari query
 	rows, err := db.Query(`
-		SELECT DATE_FORMAT(created_at, '%M %Y') AS month, SUM(total_price) AS total_sales
+		SELECT created_at, total_price
 		FROM orders
 		WHERE status = 'done' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-	        GROUP BY month
-	        ORDER BY created_at DESC;
+		ORDER BY created_at ASC;
 	`)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar penjualan"})
+		log.Printf("SQL Query Error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "❌ Gagal mengambil daftar penjualan: " + err.Error()})
 		return
 	}
 	defer rows.Close()
 
-	type SalesPerMonth struct {
-		Month      string `json:"month"`
-		TotalSales int    `json:"total_sales"`
-	}
-
-	var results []SalesPerMonth
+	monthlySalesMap := make(map[string]int64)
+	var uniqueMonths []string
 
 	for rows.Next() {
-		var sales SalesPerMonth
-		err := rows.Scan(
-			&sales.Month,
-			&sales.TotalSales,
-		)
-		if err != nil {
+		var createdAt time.Time
+		var totalPrice int64
+
+		if err := rows.Scan(&createdAt, &totalPrice); err != nil {
+			log.Printf("Error scanning row: %v", err)
 			continue
 		}
 
-		results = append(results, sales)
+		monthKey := createdAt.Format("January 2006")
+		if _, exists := monthlySalesMap[monthKey]; !exists {
+			uniqueMonths = append(uniqueMonths, monthKey)
+		}
+		monthlySalesMap[monthKey] += totalPrice
+	}
+
+	var results []SalesPerMonth
+	for _, month := range uniqueMonths {
+		results = append(results, SalesPerMonth{
+			Month:      month,
+			TotalSales: monthlySalesMap[month],
+		})
 	}
 
 	if len(results) == 0 {
@@ -3041,7 +3052,6 @@ func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
 		"data":    results,
 	})
 }
-
 func GetLowStocks(c *gin.Context, db *sql.DB) {
     // Ambil produk yang stok <= 2 dan bukan null
     rows, err := db.Query(`
