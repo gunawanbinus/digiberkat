@@ -1,76 +1,139 @@
-@extends('employee')
+@extends('employee') {{-- Pastikan ini mengarah ke layout employee Anda, misalnya: resources/views/employee.blade.php --}}
 
-@section('title', 'Dashboard Karyawan')
+@section('title', 'Dashboard Employee')
 
 @section('content')
-<div class="container-fluid py-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="page-header d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0 fw-bold">Dashboard</h2>
-      </div>
+<h1 class="mt-4 mb-4">Dashboard Employee</h1>
 
 <div class="row">
-    <!-- Pending Orders -->
-    <div class="col-lg-6 mb-4">
-        <div class="card shadow-sm h-100">
-        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-bold">Pesanan Belum Diproses</h6>
-            <a href="{{ route('orders.status', 'pending') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
-        </div>
-        <div class="card-body p-0">
-            <div class="list-group list-group-flush">
-            @foreach($pendingOrders as $item)
-            <a href="/orders/{{ $item['order']['id'] }}" class="list-group-item list-group-item-action border-0 py-3">
-                <div class="d-flex align-items-center">
-                <img src="{{ $item['sample_item']['thumbnail'] }}"
-                        class="rounded-2 me-3" width="50" height="50"
-                        style="object-fit: cover; border: 1px solid #eee;">
-                <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between">
-                    <h6 class="mb-1">#{{ $item['order']['id'] }}</h6>
-                    <span class="text-primary fw-bold">Rp{{ number_format($item['order']['total_price']) }}</span>
-                    </div>
-                    <small class="text-muted">{{ $item['sample_item']['product_name'] }}</small>
-                    <div class="mt-1">
-                    <span class="badge bg-light text-dark">
-                        <i class="far fa-clock me-1"></i>
-                        {{ \Carbon\Carbon::parse($item['order']['created_at'])->format('d M Y') }}
-                    </span>
-                    </div>
-                </div>
-                </div>
-            </a>
-            @endforeach
+    {{-- Card untuk Pemindai Kamera Langsung --}}
+    <div class="col-12 col-md-6 col-lg-6 mb-4"> {{-- Tambah mb-4 untuk margin bawah --}}
+        <div class="card shadow h-100"> {{-- Tambah h-100 untuk tinggi seragam jika perlu --}}
+            <div class="card-header bg-primary text-white d-flex align-items-center">
+                <i class="fas fa-qrcode me-2"></i>
+                <h5 class="mb-0">Pindai Kode QR Pesanan (Kamera)</h5>
             </div>
-        </div>
+            <div class="card-body text-center d-flex flex-column justify-content-between">
+                <div>
+                    <div class="mb-3">
+                        <label for="cameraSelection" class="form-label visually-hidden">Pilih Kamera:</label>
+                        <select id="cameraSelection" class="form-select form-select-sm"></select>
+                    </div>
+                    <div id="qr-reader" style="width:100%; max-width: 350px; margin: 0 auto;"></div>
+                    <div id="qr-reader-results" class="mt-3 fs-6"></div>
+                </div>
+                <div class="mt-3">
+                    <button id="stopScannerBtn" class="btn btn-danger btn-sm me-2" style="display:none;">
+                        <i class="fas fa-stop me-1"></i> Stop Scanner
+                    </button>
+                    <button id="startScannerBtn" class="btn btn-primary btn-sm" style="display:none;">
+                        <i class="fas fa-play me-1"></i> Mulai Pemindai
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-    {{-- Card untuk Pemindai QR --}}
-    <div class="col-12 col-md-6 col-lg-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-white border-bottom d-flex">
-                <i class="fas fa-qrcode me-2"></i>
-                <h6 class="mb-0 fw-bold">Pindai Kode QR Pesanan</h6>
+    {{-- Card untuk Pemindai dari Gambar --}}
+    <div class="col-12 col-md-6 col-lg-6 mb-4"> {{-- Kelas responsif untuk tata letak yang lebih baik --}}
+        <div class="card shadow h-100"> {{-- Tambah h-100 untuk tinggi seragam jika perlu --}}
+            <div class="card-header bg-secondary text-white d-flex align-items-center">
+                <i class="fas fa-upload me-2"></i>
+                <h5 class="mb-0">Pindai Kode QR dari Gambar</h5>
             </div>
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    <label for="cameraSelection" class="form-label">Pilih Kamera:</label>
-                    <select id="cameraSelection" class="form-select"></select>
+            <div class="card-body text-center d-flex flex-column justify-content-between">
+                <div>
+                    <p class="text-muted mb-3">Pilih gambar yang berisi kode QR dari perangkat Anda.</p>
+                    <input type="file" class="form-control" id="qr-image-file" accept="image/*">
+                    <div id="qr-image-results" class="mt-3 fs-6"></div>
                 </div>
-                <div id="qr-reader" style="width:100%;"></div>
-                <div id="qr-reader-results" class="mt-3"></div>
-                <button id="stopScannerBtn" class="btn btn-danger mt-3" style="display:none;">Stop Scanner</button>
-                <button id="startScannerBtn" class="btn btn-primary mt-3" style="display:none;">Mulai Pemindai</button>
+                {{-- Placeholder untuk menjaga tinggi card jika konten di atasnya pendek --}}
+                <div style="min-height: 50px;"></div>
             </div>
-            <div class="card-body text-center">
-                <p class="text-muted">atau</p>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-lg-6 mb-4"> {{-- Tambah mb-4 untuk margin bawah --}}
+        <div class="card shadow h-100"> {{-- Tambah h-100 untuk tinggi seragam jika perlu --}}
+            <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="fas fa-list-alt me-2"></i>
+                    Pesanan Belum Diproses
+                </h5>
+                {{-- Pastikan route 'orders.status' sudah terdefinisi di web.php Anda --}}
+                <a href="{{ route('orders.status', 'pending') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-eye me-1"></i> Lihat Semua
+                </a>
             </div>
-            <div class="card-body text-center">
-                <label class="form-label">Pilih kode QR dari perangkat:</label>
-                <input type="file" class="form-control" id="qr-image-file" accept="image/*">
-                <div id="qr-image-results" class="mt-3"></div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {{-- Pastikan variabel $pendingOrders dilewatkan dari controller --}}
+                    @forelse($pendingOrders as $item)
+                    <a href="/orders/{{ $item['order']['id'] }}/employee-detail" class="list-group-item list-group-item-action border-0 py-3">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ $item['sample_item']['thumbnail'] }}"
+                                class="rounded-2 me-3 shadow-sm" width="50" height="50"
+                                style="object-fit: cover; border: 1px solid #eee;">
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0 fw-bold text-dark">#{{ $item['order']['id'] }}</h6>
+                                    <span class="text-primary fw-bold fs-6">Rp{{ number_format($item['order']['total_price']) }}</span>
+                                </div>
+                                <small class="text-muted d-block text-truncate mb-1" style="max-width: 90%;">
+                                    {{ $item['sample_item']['product_name'] }}
+                                </small>
+                                <div>
+                                    <span class="badge bg-secondary text-white rounded-pill px-2 py-1">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ \Carbon\Carbon::parse($item['order']['created_at'])->format('d M Y') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    @empty
+                    <div class="list-group-item border-0 py-4 text-center text-muted">
+                        <i class="fas fa-box-open fa-2x mb-2 d-block"></i>
+                        Tidak ada pesanan yang perlu diproses saat ini.
+                    </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Card Informasi Tambahan --}}
+    <div class="col-12 col-md-6 col-lg-6 mb-4"> {{-- Kelas responsif untuk tata letak yang lebih baik --}}
+        <div class="card shadow h-100"> {{-- Tambah h-100 untuk tinggi seragam jika perlu --}}
+            <div class="card-header bg-info text-white d-flex align-items-center">
+                <i class="fas fa-info-circle me-2"></i>
+                <h5 class="mb-0">Informasi dan Panduan</h5>
+            </div>
+            <div class="card-body">
+                <p class="lead text-center mb-4">Selamat datang di dashboard karyawan!</p>
+                <p class="text-muted">Gunakan pemindai QR untuk memproses pesanan dengan cepat dan efisien.</p>
+                <ul class="list-group list-group-flush border-bottom mb-3">
+                    <li class="list-group-item">
+                        <i class="fas fa-camera me-2 text-primary"></i>
+                        Gunakan <strong>"Pindai Kode QR Pesanan (Kamera)"</strong> untuk pemindaian langsung.
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-image me-2 text-secondary"></i>
+                        Gunakan <strong>"Pindai Kode QR dari Gambar"</strong> untuk mengunggah gambar.
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-barcode me-2 text-info"></i>
+                        QR Code harus berisi ID pesanan dalam format angka.
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-wifi me-2 text-warning"></i>
+                        Pastikan koneksi internet stabil untuk validasi pesanan.
+                    </li>
+                </ul>
+                <p class="text-center small text-success mt-4">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Siap melayani pelanggan Anda!
+                </p>
             </div>
         </div>
     </div>
@@ -78,7 +141,7 @@
 @endsection
 
 @section('scripts')
-<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+
 <script>
     let html5QrCode; // Variabel global untuk instance Html5Qrcode
     let currentCameraId = null; // Menyimpan ID kamera yang sedang digunakan
@@ -324,6 +387,11 @@
                 `;
                 document.getElementById('qr-reader-results').innerHTML = successHtml;
                 document.getElementById('qr-image-results').innerHTML = successHtml;
+
+                // Opsional: Muat ulang bagian "Pending Orders" jika ada
+                // Ini akan memerlukan AJAX request ke endpoint yang mengembalikan data pendingOrders
+                // Untuk kesederhanaan, ini bisa diabaikan atau ditambahkan nanti
+                // window.location.reload(); // Contoh refresh halaman penuh jika ingin update langsung
             } else {
                 const message = data.message || 'Pesanan tidak ditemukan atau terjadi kesalahan.';
                 const errorHtml = `<div class="alert alert-danger">${message}</div>`;
