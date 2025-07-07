@@ -3054,6 +3054,7 @@ func GetSalesPerMonth(c *gin.Context, db *sql.DB) {
 		"data":    results,
 	})
 }
+
 func GetLowStocks(c *gin.Context, db *sql.DB) {
     // Ambil produk yang stok <= 2 dan bukan null
     rows, err := db.Query(`
