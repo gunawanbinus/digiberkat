@@ -8,8 +8,11 @@
                 <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
                     <h2 class="mb-0 fw-bold">{{ $data['name'] }}</h2>
                     <div>
-                        <a href="{{ route('products.create') }}" class="btn btn-primary rounded-pill px-4">
-                            <i class="fas fa-edit me-2"></i> Edit Produk
+                        <a href="{{ route('products.create') }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i> Edit
+                        </a>
+                        <a href="{{ route('products.create') }}" class="btn btn-danger">
+                            <i class="fas fa-trash me-2"></i> Hapus
                         </a>
                     </div>
                 </div>
@@ -58,9 +61,9 @@
                         <div class="col-lg-6">
                             <div class="product-details">
                                 <div class="d-flex align-items-center mb-4">
-                                    <span class="badge bg-primary rounded-pill px-3 py-2 me-3">
+                                    <!--<span class="badge bg-primary rounded-pill px-3 py-2 me-3">
                                         Kategori: {{ $data['category_id'] }}
-                                    </span>
+                                    </span>-->
                                     <span class="badge {{ $data['is_varians'] ? 'bg-info' : ($data['stock'] > 0 ? 'bg-success' : 'bg-danger') }} rounded-pill px-3 py-2">
                                         {{ $data['is_varians'] ? 'Multi Varian' : ($data['stock'] > 0 ? 'Stok: '.$data['stock'] : 'Stok Habis') }}
                                     </span>
@@ -74,7 +77,6 @@
                                 @if(!$data['is_varians'])
                                 <div class="card border-0 shadow-sm mb-4">
                                     <div class="card-body">
-                                        <h5 class="card-title mb-3">Informasi Harga</h5>
                                         <div class="d-flex align-items-center">
                                             @if($data['is_discounted'])
                                             <div class="me-4">

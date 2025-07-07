@@ -3,7 +3,7 @@
 @section('content')
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-boxes me-2"></i>Daftar Permintaan Restok</h2>
+        <h2><i class="fas fa-boxes me-2"></i>Permintaan Restok</h2>
     </div>
 
     @if ($errors->any())
@@ -64,12 +64,12 @@
                                     @if (!empty($item['variant_name']))
                                         {{ $item['variant_name'] }}
                                     @else
-                                        <span class="badge bg-secondary text-white fs-6">Tanpa Varian</span>
+                                        <span class="badge bg-secondary text-white rounded-pill px-3">Tanpa Varian</span>
                                     @endif
                                 </td>
 
                                 <td class="text-center">
-                                    <span class="badge fs-6 py-2 px-3 bg-{{ $item['stock'] > 10 ? 'success' : ($item['stock'] > 0 ? 'warning' : 'danger') }}">
+                                    <span class="badge rounded-pill px-3 py-2 bg-{{ $item['stock'] > 10 ? 'success' : ($item['stock'] > 0 ? 'warning' : 'danger') }}">
                                         {{ $item['stock'] }}
                                     </span>
                                 </td>

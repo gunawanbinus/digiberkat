@@ -10,17 +10,7 @@
                 </a>
 
                 <div class="sb-sidenav-menu-heading">Manajemen</div>
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseEmployee">
-                    <div class="sb-nav-link-icon"><i class="fas fa-user-tie"></i></div>
-                    Karyawan
-                    <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                </a>
-                <div class="collapse" id="collapseEmployee">
-                    <nav class="sb-sidenav-menu-nested nav">
-                        <a class="nav-link" href="#">Semua Karyawan</a>
-                        <a class="nav-link" href="{{ route('employee.register')}}">Tambah Karyawan</a>
-                    </nav>
-                </div>
+
                 <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseProduk">
                     <div class="sb-nav-link-icon"><i class="fas fa-box-open"></i></div>
                     Produk
@@ -30,7 +20,6 @@
                     <nav class="sb-sidenav-menu-nested nav">
                         <a class="nav-link" href="{{ route('products.index') }}">Semua Produk</a>
                         <a class="nav-link" href="{{ route('categories.index') }}">Berdasarkan Kategori</a>
-                        <a class="nav-link" href="#">Stok Rendah</a>
                         <a class="nav-link" href="{{ route('products.create') }}">Tambah Produk</a>
                     </nav>
                 </div>
@@ -54,8 +43,18 @@
                 <a class="nav-link" href="{{ route('restock.requests') }}">
                     <div class="sb-nav-link-icon"><i class="fas fa-arrow-rotate-left"></i></div>
                     Permintaan Restok
-                    <span class="badge bg-danger rounded-pill ms-2">3</span>
                 </a>
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseEmployee">
+                    <div class="sb-nav-link-icon"><i class="fas fa-user-tie"></i></div>
+                    Karyawan
+                    <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                </a>
+                <div class="collapse" id="collapseEmployee">
+                    <nav class="sb-sidenav-menu-nested nav">
+                        <a class="nav-link" href="{{ route('employee.index') }}">Semua Karyawan</a>
+                        <a class="nav-link" href="{{ route('employee.register')}}">Tambah Karyawan</a>
+                    </nav>
+                </div>
             </div>
         </div>
         <div class="sb-sidenav-footer">

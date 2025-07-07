@@ -9,7 +9,7 @@
             <h2 class="mb-0 fw-bold">Kategori Produk</h2>
         </div>
         <div class="col-md-6 text-end">
-            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                 <i class="bi bi-plus-lg me-2"></i>Tambah Kategori
             </button>
         </div>
@@ -26,7 +26,6 @@
                             </div>
                             <div>
                                 <h5 class="mb-0 fw-semibold">{{ $category['name'] }}</h5>
-                                <small class="text-muted">12 produk</small> <!-- You can replace with actual count -->
                             </div>
                         </div>
                         <i class="bi bi-chevron-right text-muted"></i>
@@ -36,7 +35,7 @@
                 <div class="text-center py-5">
                     <i class="bi bi-folder-x fs-1 text-muted"></i>
                     <p class="mt-3 text-muted">Tidak ada kategori ditemukan</p>
-                    <button class="btn btn-outline-primary mt-2 rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                    <button class="btn btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                         <i class="bi bi-plus-lg me-2"></i>Tambah Kategori
                     </button>
                 </div>
@@ -61,8 +60,8 @@
                     </form>
                 </div>
                 <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-primary rounded-pill px-4">Simpan</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary">Simpan</button>
                 </div>
             </div>
         </div>

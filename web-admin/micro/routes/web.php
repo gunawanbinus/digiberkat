@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\EmployeeAccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\RestockRequestController;
@@ -51,7 +52,6 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(fun
     Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::get('/account', [DashboardController::class, 'account'])->name('admin.account');
-        Route::get('/charts', fn () => view('admin.charts'));
         Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
         Route::post('/products/upload/wizard', [ProductWizardController::class, 'uploadImage'])->name('products.upload');
         Route::post('/products/search-vector/wizard', [ProductWizardController::class, 'generateSearchVector'])->name('products.search_vector');
@@ -63,6 +63,7 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(fun
     | EMPLOYEE MANAGEMENT ROUTES
     |--------------------------------------------------------------------------
     */
+    Route::get('/employees', [EmployeeAccountController::class, 'index'])->name('employee.index');
     Route::get('/employee/register', [LoginController::class, 'employeeRegister'])->name('employee.register');
     Route::post('/employee/register', [LoginController::class, 'doEmployeeRegister'])->name('employee.register.do');
 
@@ -95,7 +96,7 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin'])->group(fun
 Route::middleware(['check.login', 'check.token', 'check.role:employee'])->group(function () {
         /*
     |--------------------------------------------------------------------------
-    | DASHBOARD ROUTES
+    | EMPLOYEE DASHBOARD ROUTE
     |--------------------------------------------------------------------------
     */
     Route::prefix('employee')->group(function () {
@@ -125,7 +126,6 @@ Route::middleware(['check.login', 'check.token', 'check.role:admin,employee'])->
         return back()->with('error', 'Gagal menyelesaikan pesanan');
     })->name('orders.finish');
 
-    // routes/web.php
      // Rute POST untuk menerima ID pesanan dari pemindaian QR
     Route::post('/orders/scan', [OrderController::class, 'scanOrder'])->name('orders.scan');
     // Rute untuk menampilkan detail pesanan di halaman employee (jika Anda ingin mengarahkan langsung setelah scan)

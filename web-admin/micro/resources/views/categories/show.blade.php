@@ -1,14 +1,21 @@
 @extends('admin')
 
-@section('title', 'Produk dalam Kategori: ' . ($category['name'] ?? 'Kategori Tidak Ditemukan'))
+@section('title', 'Kategori ' . ($category['name'] ?? 'Kategori Tidak Ditemukan'))
 
 @section('content')
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="fas fa-boxes me-2"></i>Produk: {{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
-    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-      <i class="fas fa-edit me-2"></i>Edit Kategori
-    </button>
+    <div>
+      <h2><i class="fas fa-boxes me-2"></i>{{ $category['name'] ?? 'Kategori Tidak Ditemukan' }}</h2>
+    </div>
+    <div>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="fas fa-edit me-2"></i>Edit Kategori
+      </button>
+      <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="fas fa-trash me-2"></i>Hapus Kategori
+      </button>
+    </div>
   </div>
 
   @isset($category['description'])
@@ -69,12 +76,15 @@
                           @endif
                         </td>
                         <td class="d-flex align-items-center gap-2">
-                          <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                          <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
                             <i class="fas fa-eye"></i>
                           </a>
                           <a href="/products/{{ $product['id'] }}?variant={{ $variant['id'] }}"
                              class="btn btn-sm btn-outline-primary" title="Edit">
                             <i class="fas fa-edit"></i>
+                          </a>
+                          <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
+                            <i class="fas fa-trash"></i>
                           </a>
                         </td>
                       </tr>
@@ -109,12 +119,15 @@
                         @endif
                       </td>
                       <td class="d-flex align-items-center gap-2">
-                        <a href="/products]/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
+                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-primary" title="Detail">
                           <i class="fas fa-eye"></i>
                         </a>
                         <a href="/products/{{ $product['id'] }}"
                            class="btn btn-sm btn-outline-primary" title="Edit">
                           <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="/products/{{ $product['id'] }}" class="btn btn-sm btn-outline-danger" title="Hapus">
+                          <i class="fas fa-trash"></i>
                         </a>
                       </td>
                     </tr>
